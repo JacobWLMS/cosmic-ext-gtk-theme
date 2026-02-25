@@ -38,7 +38,6 @@ jobs:
       - name: Build RPM
         run: |
           mkdir -p ~/rpmbuild/{SOURCES,SPECS}
-          # Create source tarball from repo
           tar czf ~/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," \
             --exclude='.git' --exclude='target' .
@@ -136,9 +135,31 @@ jobs:
           name: deb-package
           path: "*.deb"
 
+  build-flatpak:
+    name: Build (Flatpak)
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: packaging/flatpak/dev.jacobwlms.CosmicExtGtkTheme.ci.yml
+          bundle: cosmic-ext-gtk-theme.flatpak
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: cosmic-ext-gtk-theme.flatpak
+
   release:
     name: Create GitHub Release
-    needs: [build-fedora, build-deb]
+    needs: [build-fedora, build-deb, build-flatpak]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -159,6 +180,7 @@ jobs:
             artifacts/rpm-package/**/*.rpm
             artifacts/deb-package/*.deb
             artifacts/portable-tarball/*.tar.gz
+            artifacts/flatpak-bundle/*.flatpak
           body: |
             ## Installation
 
@@ -170,6 +192,11 @@ jobs:
             ### Debian / Ubuntu
             ```bash
             sudo dpkg -i cosmic-ext-gtk-theme_${{ env.PKG_VERSION }}-1_amd64.deb
+            ```
+
+            ### Flatpak
+            ```bash
+            flatpak install cosmic-ext-gtk-theme.flatpak
             ```
 
             ### Portable binary
