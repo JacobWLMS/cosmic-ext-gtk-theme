@@ -1,0 +1,186 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  PKG_NAME: cosmic-ext-gtk-theme
+  PKG_VERSION: "0.1.0"
+
+jobs:
+  build-fedora:
+    name: Build (Fedora RPM + portable binary)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:43
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            git gcc pkg-config \
+            rust cargo \
+            libxkbcommon-devel wayland-devel \
+            mesa-libEGL-devel vulkan-loader-devel \
+            libinput-devel \
+            rpm-build
+
+      - uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Build RPM
+        run: |
+          mkdir -p ~/rpmbuild/{SOURCES,SPECS}
+          # Create source tarball from repo
+          tar czf ~/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
+            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," \
+            --exclude='.git' --exclude='target' .
+          cp packaging/rpm/${PKG_NAME}.spec ~/rpmbuild/SPECS/
+          rpmbuild -bb ~/rpmbuild/SPECS/${PKG_NAME}.spec
+
+      - name: Create portable tarball
+        run: |
+          mkdir -p ${PKG_NAME}-${PKG_VERSION}
+          cp target/release/${PKG_NAME} ${PKG_NAME}-${PKG_VERSION}/
+          cp res/dev.jacobwlms.CosmicExtGtkTheme.desktop ${PKG_NAME}-${PKG_VERSION}/
+          cp LICENSE ${PKG_NAME}-${PKG_VERSION}/
+          cp README.md ${PKG_NAME}-${PKG_VERSION}/
+          cat > ${PKG_NAME}-${PKG_VERSION}/install.sh << 'SCRIPT'
+          #!/bin/bash
+          set -e
+          PREFIX="${PREFIX:-/usr/local}"
+          install -Dm0755 cosmic-ext-gtk-theme "$PREFIX/bin/cosmic-ext-gtk-theme"
+          install -Dm0644 dev.jacobwlms.CosmicExtGtkTheme.desktop "$PREFIX/share/applications/dev.jacobwlms.CosmicExtGtkTheme.desktop"
+          echo "Installed to $PREFIX"
+          SCRIPT
+          chmod +x ${PKG_NAME}-${PKG_VERSION}/install.sh
+          tar czf ${PKG_NAME}-${PKG_VERSION}-x86_64-linux.tar.gz ${PKG_NAME}-${PKG_VERSION}/
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ~/rpmbuild/RPMS/**/*.rpm
+
+      - name: Upload portable tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-tarball
+          path: ${{ env.PKG_NAME }}-${{ env.PKG_VERSION }}-x86_64-linux.tar.gz
+
+  build-deb:
+    name: Build (Debian/Ubuntu .deb)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            git gcc pkg-config curl \
+            libxkbcommon-dev libwayland-dev \
+            libegl-dev libvulkan-dev \
+            libinput-dev \
+            dpkg-dev fakeroot
+          # Install Rust
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release
+
+      - name: Build .deb package
+        run: |
+          . "$HOME/.cargo/env"
+          PKG_DIR=${PKG_NAME}_${PKG_VERSION}-1_amd64
+          mkdir -p ${PKG_DIR}/DEBIAN
+          mkdir -p ${PKG_DIR}/usr/bin
+          mkdir -p ${PKG_DIR}/usr/share/applications
+
+          cp target/release/${PKG_NAME} ${PKG_DIR}/usr/bin/
+          cp res/dev.jacobwlms.CosmicExtGtkTheme.desktop ${PKG_DIR}/usr/share/applications/
+
+          cat > ${PKG_DIR}/DEBIAN/control << CTRL
+          Package: ${PKG_NAME}
+          Version: ${PKG_VERSION}-1
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Jacob WLMS <jacobwlms@users.noreply.github.com>
+          Homepage: https://github.com/JacobWLMS/cosmic-ext-gtk-theme
+          Description: Sync COSMIC desktop theming to GTK applications
+           A COSMIC desktop application that syncs COSMIC theming to GTK
+           applications. Removes window button backgrounds, applies accent
+           colors to window controls, syncs fonts, and handles Flatpak apps.
+          CTRL
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' ${PKG_DIR}/DEBIAN/control
+
+          dpkg-deb --build ${PKG_DIR}
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: "*.deb"
+
+  release:
+    name: Create GitHub Release
+    needs: [build-fedora, build-deb]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/rpm-package/**/*.rpm
+            artifacts/deb-package/*.deb
+            artifacts/portable-tarball/*.tar.gz
+          body: |
+            ## Installation
+
+            ### Fedora / RPM
+            ```bash
+            sudo dnf install ./cosmic-ext-gtk-theme-${{ env.PKG_VERSION }}-1.*.rpm
+            ```
+
+            ### Debian / Ubuntu
+            ```bash
+            sudo dpkg -i cosmic-ext-gtk-theme_${{ env.PKG_VERSION }}-1_amd64.deb
+            ```
+
+            ### Portable binary
+            ```bash
+            tar xzf cosmic-ext-gtk-theme-${{ env.PKG_VERSION }}-x86_64-linux.tar.gz
+            cd cosmic-ext-gtk-theme-${{ env.PKG_VERSION }}
+            sudo ./install.sh
+            ```
+
+            ### From source
+            ```bash
+            cargo build --release
+            sudo make install
+            ```
