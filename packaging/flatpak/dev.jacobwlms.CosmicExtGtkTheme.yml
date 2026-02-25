@@ -1,0 +1,37 @@
+app-id: dev.jacobwlms.CosmicExtGtkTheme
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+base: com.system76.Cosmic.BaseApp
+base-version: stable
+command: cosmic-ext-gtk-theme
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-config/cosmic:ro
+  - --filesystem=xdg-config/gtk-4.0
+  - --filesystem=xdg-config/gtk-3.0
+  - --filesystem=~/.var/app:create
+  - --filesystem=/usr/share/fonts:ro
+  - --filesystem=xdg-data/fonts:ro
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/cosmic-ext-gtk-theme/cargo
+    RUST_BACKTRACE: '1'
+modules:
+  - name: cosmic-ext-gtk-theme
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm0755 target/release/cosmic-ext-gtk-theme /app/bin/cosmic-ext-gtk-theme
+      - install -Dm0644 res/dev.jacobwlms.CosmicExtGtkTheme.desktop /app/share/applications/dev.jacobwlms.CosmicExtGtkTheme.desktop
+    sources:
+      - type: dir
+        path: ../../

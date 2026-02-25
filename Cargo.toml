@@ -1,0 +1,28 @@
+[package]
+name = "cosmic-ext-gtk-theme"
+version = "0.1.0"
+edition = "2024"
+description = "Sync COSMIC desktop theming to GTK applications"
+license = "GPL-3.0"
+
+[dependencies]
+env_logger = "0.11"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+ron = "0.8"
+dirs = "6"
+notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+tokio = { version = "1", features = ["sync", "time"] }
+
+[dependencies.libcosmic]
+git = "https://github.com/pop-os/libcosmic.git"
+default-features = false
+features = ["tokio", "winit", "dbus-config", "wgpu"]
+
+[features]
+default = ["wgpu"]
+wgpu = ["libcosmic/wgpu"]
+
+[profile.release]
+opt-level = 2
+lto = "thin"

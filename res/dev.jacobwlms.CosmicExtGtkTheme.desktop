@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=COSMIC GTK Theme Sync
+Comment=Sync COSMIC desktop theming to GTK applications
+Exec=cosmic-ext-gtk-theme
+Terminal=false
+Type=Application
+StartupNotify=true
+Icon=preferences-desktop-theme
+Categories=COSMIC;Settings;DesktopSettings;
+Keywords=gtk;theme;cosmic;accent;sync;flatpak;

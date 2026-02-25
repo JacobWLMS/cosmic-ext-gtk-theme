@@ -1,0 +1,23 @@
+pkgname=cosmic-ext-gtk-theme
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Sync COSMIC desktop theming to GTK applications"
+arch=('x86_64' 'aarch64')
+url="https://github.com/JacobWLMS/cosmic-ext-gtk-theme"
+license=('GPL-3.0-only')
+depends=('libxkbcommon' 'wayland' 'vulkan-icd-loader')
+makedepends=('rust' 'cargo' 'pkg-config' 'libinput')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver"
+    cargo build --release --locked
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    install -Dm0755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+    install -Dm0644 "res/dev.jacobwlms.CosmicExtGtkTheme.desktop" "$pkgdir/usr/share/applications/dev.jacobwlms.CosmicExtGtkTheme.desktop"
+    install -Dm0644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

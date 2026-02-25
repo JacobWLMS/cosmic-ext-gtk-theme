@@ -1,0 +1,24 @@
+Source: cosmic-ext-gtk-theme
+Section: utils
+Priority: optional
+Maintainer: Jacob WLMS <jacobwlms@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cargo,
+               rustc (>= 1.80),
+               pkg-config,
+               libxkbcommon-dev,
+               libwayland-dev,
+               libegl-dev,
+               libvulkan-dev,
+               libinput-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/JacobWLMS/cosmic-ext-gtk-theme
+
+Package: cosmic-ext-gtk-theme
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Sync COSMIC desktop theming to GTK applications
+ A COSMIC desktop application that syncs COSMIC theming to GTK applications.
+ Removes window button backgrounds, applies accent colors to window controls,
+ syncs fonts, and handles Flatpak apps. Automatically re-applies when the
+ COSMIC theme changes.
