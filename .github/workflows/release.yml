@@ -138,18 +138,74 @@ jobs:
   build-flatpak:
     name: Build (Flatpak)
     runs-on: ubuntu-latest
-    container:
-      image: bilelmoussaoui/flatpak-github-actions:freedesktop-24.08
-      options: --privileged
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Flatpak
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          manifest-path: packaging/flatpak/dev.jacobwlms.CosmicExtGtkTheme.ci.yml
-          bundle: cosmic-ext-gtk-theme.flatpak
-          cache-key: flatpak-builder-${{ github.sha }}
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            flatpak flatpak-builder \
+            pkg-config gcc \
+            libxkbcommon-dev libwayland-dev \
+            libegl-dev libvulkan-dev \
+            libinput-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Setup Flatpak
+        run: |
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
+      - name: Prepare Flatpak build files
+        run: |
+          mkdir -p flatpak-build-dir
+          cp target/release/${PKG_NAME} flatpak-build-dir/
+          cp res/dev.jacobwlms.CosmicExtGtkTheme.desktop flatpak-build-dir/
+          # Update manifest source paths for the build directory
+          cat > flatpak-build-dir/manifest.yml << 'MANIFEST'
+          app-id: dev.jacobwlms.CosmicExtGtkTheme
+          runtime: org.freedesktop.Platform
+          runtime-version: '24.08'
+          sdk: org.freedesktop.Sdk
+          command: cosmic-ext-gtk-theme
+          finish-args:
+            - --share=ipc
+            - --socket=wayland
+            - --socket=fallback-x11
+            - --device=dri
+            - --talk-name=org.freedesktop.Flatpak
+            - --filesystem=xdg-config/cosmic:ro
+            - --filesystem=xdg-config/gtk-4.0
+            - --filesystem=xdg-config/gtk-3.0
+            - --filesystem=~/.var/app:create
+            - --filesystem=/usr/share/fonts:ro
+            - --filesystem=xdg-data/fonts:ro
+          modules:
+            - name: cosmic-ext-gtk-theme
+              buildsystem: simple
+              build-commands:
+                - install -Dm0755 cosmic-ext-gtk-theme /app/bin/cosmic-ext-gtk-theme
+                - install -Dm0644 dev.jacobwlms.CosmicExtGtkTheme.desktop /app/share/applications/dev.jacobwlms.CosmicExtGtkTheme.desktop
+              sources:
+                - type: file
+                  path: cosmic-ext-gtk-theme
+                - type: file
+                  path: dev.jacobwlms.CosmicExtGtkTheme.desktop
+          MANIFEST
+          # Remove heredoc indentation
+          sed -i 's/^          //' flatpak-build-dir/manifest.yml
+
+      - name: Build Flatpak bundle
+        run: |
+          cd flatpak-build-dir
+          flatpak-builder --force-clean --repo=repo builddir manifest.yml
+          flatpak build-bundle repo ../cosmic-ext-gtk-theme.flatpak dev.jacobwlms.CosmicExtGtkTheme
 
       - name: Upload Flatpak artifact
         uses: actions/upload-artifact@v4
