@@ -7,6 +7,7 @@ Cross-experiment findings and synthesis. See individual experiment files for ful
 - [EXP1_RESEARCH.md](EXP1_RESEARCH.md) — Paired Latent Frequency Analysis
 - [EXP2_RESEARCH.md](EXP2_RESEARCH.md) — Within-Identity Latent Invariance
 - [EXP3_RESEARCH.md](EXP3_RESEARCH.md) — Step-by-Step Identity Emergence
+- [EXP5_RESEARCH.md](EXP5_RESEARCH.md) — Channel-Based Identity Transplant
 - [EXP6_RESEARCH.md](EXP6_RESEARCH.md) — Channel Importance (Zeroing + Face Region)
 
 ## Key Findings So Far
@@ -47,11 +48,20 @@ To transplant or modify identity, **target Ch 3** — it's the only channel wher
 - Frequency analysis adds ~25% information beyond raw spatial differences (r=0.75)
 - Discrimination ratios are low (<0.05) — identity is embedded, not isolated
 
+### Channel Swap Identity Transfer (Exp 5)
+
+Identity transplant via channel swapping is possible but crude:
+- **Ch 0 swap:** +0.367 ArcFace gain but SSIM 0.491 (scene destroyed)
+- **Ch 3 swap:** +0.153 ArcFace gain with SSIM 0.543 (moderate scene preservation)
+- **Ch 1/2 swap:** No identity transfer (~-0.05), confirming negative controls
+
+The swap results perfectly mirror the zeroing results (Exp 6), fully validating the hierarchical model. For practical identity manipulation, channel-level swapping is too coarse — subspace methods within Ch 3 or identity-conditioned generation are needed.
+
 ### Priority Next Steps
 
 1. **Exp 7 (PCA on Ch 3)** — Is discriminative identity a linear subspace within the fingerprint channel?
-2. **Exp 5 (Ch 3 Injection at step 7)** — Can we transplant discriminative identity by swapping Ch 3 mid-denoising?
-3. **Exp 4 (ArcFace Correlation)** — Do Ch 3 latent distances predict perceptual identity similarity?
+2. **Re-denoising experiment** — Swap Ch 3 then CONTINUE denoising instead of direct VAE decode
+3. **Cross-model validation** — Test channel hierarchy on Lumina2 (16-channel VAE)
 
 ---
 
