@@ -54,15 +54,21 @@ Key parameters across experiments: `model_type` (sdxl/lumina2), `n_seeds`, `num_
 
 ## Development Workflow
 
-**All permanent code changes MUST be committed and pushed via git before running on Colab.** The Colab VM clones from GitHub — in-memory cell edits are lost on runtime switch. Only use in-memory edits for throwaway test runs.
+**All code changes MUST follow this exact process. No exceptions.**
 
-Workflow:
-1. Edit experiment/pipeline code locally
-2. `git commit && git push`
-3. On Colab: `git pull` (the clone/pull cell handles this)
-4. Run experiment
+1. **Edit code locally** (experiments, pipeline, etc.)
+2. **`git commit && git push`**
+3. **In Colab: Runtime → Restart runtime** (Python caches modules — `git pull` alone is NOT enough)
+4. **Run setup cells** (clone/pull, imports, config) — the pull cell fetches latest code
+5. **Run experiment**
 
-Do NOT rely on `importlib.reload()` or in-memory cell updates for anything that needs to persist.
+**Why restart?** Python's import system caches modules in memory. Even after `git pull` updates files on disk, `import experiments.exp5` still uses the OLD cached version. `importlib.reload()` is unreliable with nested imports. Runtime restart is the only way to guarantee fresh code.
+
+**Do NOT:**
+- Use `importlib.reload()` for production runs
+- Use in-memory cell edits (`update_cell`) for code that needs to persist
+- Skip the runtime restart after pushing code changes
+- Run experiments on stale cached modules
 
 ## Compute
 
