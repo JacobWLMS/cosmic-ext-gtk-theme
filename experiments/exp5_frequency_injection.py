@@ -1,7 +1,17 @@
-"""Experiment 5: Naive Frequency Injection Test.
+"""Experiment 5: Channel-Based Identity Transplant.
 
-Question: If we just brute-force inject identity frequencies, does anything happen?
-Only run if Experiments 1-2 show identifiable frequency bands.
+Question: Can we transplant identity by swapping Ch 3 between two latents during denoising?
+
+Hypothesis (informed by Exp 1-3, 6):
+- Swapping Ch 3 (identity fingerprint) at step 7 during denoising should transfer
+  discriminative identity from source to target while preserving target's scene.
+- Swapping Ch 1 (style/texture) should NOT transfer identity (negative control).
+- Swapping Ch 0 (foundation) should destroy the image (positive control).
+
+Success criteria:
+- Ch 3 swap: ArcFace similarity to source identity increases vs unswapped
+- Ch 3 swap: scene similarity (SSIM) to target remains high
+- Ch 1 swap: ArcFace similarity to source does NOT increase (control)
 """
 
 import gc
@@ -12,84 +22,68 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
-from identity_analysis.frequency import (
-    apply_frequency_mask,
-    fft_2d_per_channel,
-    frequency_band_mask,
-    ifft_2d_per_channel,
-)
 from identity_analysis.pipeline import PipelineWrapper
-from identity_analysis.plotting import plot_image_grid
+from identity_analysis.plotting import plot_image_grid, plot_line_chart
 from identity_analysis.scoring import ArcFaceScorer, compute_mse, compute_ssim
-from identity_analysis.utils import (
-    detect_face_bbox,
-    get_output_dir,
-    pixel_bbox_to_latent_bbox,
-)
+from identity_analysis.utils import get_output_dir
 
 
-def _inject_frequencies(
-    target_latent: np.ndarray,
-    ref_latent: np.ndarray,
-    band: str = "mid",
-    face_bbox: tuple | None = None,
-) -> np.ndarray:
-    """Replace frequency bands in target with those from reference.
+# Source identity (who we want to transplant FROM)
+SOURCE_PROMPTS = [
+    ("Brad Pitt", "portrait photo of Brad Pitt, detailed face, studio lighting, neutral background"),
+    ("Morgan Freeman", "portrait photo of Morgan Freeman, detailed face, studio lighting, neutral background"),
+]
 
-    If face_bbox is provided, only replace within the face region.
+# Target scenes (where we want to transplant TO — different people, different contexts)
+TARGET_PROMPTS = [
+    "portrait photo of a young woman, detailed face, outdoor park, natural lighting",
+    "portrait photo of an old man with a beard, detailed face, studio lighting, dark background",
+    "portrait photo of a teenage boy, detailed face, urban street, golden hour",
+]
+
+
+def _swap_channel_at_step(pipe, source_prompt, target_prompt, seed, channel, swap_step, num_steps):
+    """Generate source and target, swap a specific channel at a specific denoising step.
+
+    Returns dict with swapped_image, source_image, target_image, and all latents.
     """
-    if target_latent.ndim == 4:
-        target = target_latent[0].copy()
-    else:
-        target = target_latent.copy()
-    if ref_latent.ndim == 4:
-        ref = ref_latent[0]
-    else:
-        ref = ref_latent
+    import torch
 
-    C, H, W = target.shape
+    # Generate source with step latents
+    source_res = pipe.generate(
+        source_prompt, seed,
+        num_inference_steps=num_steps,
+        save_step_latents=True,
+        output_dir=None,
+    )
 
-    if face_bbox:
-        y1, x1, y2, x2 = face_bbox
-        target_region = target[:, y1:y2, x1:x2]
-        ref_region = ref[:, y1:y2, x1:x2]
-        rH, rW = y2 - y1, x2 - x1
-    else:
-        target_region = target
-        ref_region = ref
-        rH, rW = H, W
+    # Generate target with step latents
+    target_res = pipe.generate(
+        target_prompt, seed,
+        num_inference_steps=num_steps,
+        save_step_latents=True,
+        output_dir=None,
+    )
 
-    # Determine frequency cutoffs
-    if band == "low":
-        cutoff_low, cutoff_high = 0.0, 0.33
-    elif band == "mid":
-        cutoff_low, cutoff_high = 0.33, 0.66
-    elif band == "high":
-        cutoff_low, cutoff_high = 0.66, 1.0
-    elif band == "all":
-        cutoff_low, cutoff_high = 0.0, 1.0
-    else:
-        cutoff_low, cutoff_high = 0.0, 1.0
+    # Get the latent at the swap step from both
+    source_step_latent = source_res["step_latents"][swap_step]  # [1, C, H, W]
+    target_step_latent = target_res["step_latents"][swap_step]
 
-    mask = frequency_band_mask(rH, rW, "custom", cutoff_low, cutoff_high)
+    # Perform channel swap: replace target's channel with source's channel
+    swapped_latent = target_step_latent.copy()
+    swapped_latent[0, channel] = source_step_latent[0, channel]
 
-    for c in range(C):
-        # FFT both
-        target_fft = np.fft.fftshift(np.fft.fft2(target_region[c]))
-        ref_fft = np.fft.fftshift(np.fft.fft2(ref_region[c]))
+    # Decode the swapped latent to see the result
+    swapped_image = pipe.decode_latent(swapped_latent)
 
-        # Replace masked frequencies
-        target_fft = target_fft * (1 - mask) + ref_fft * mask
-
-        # IFFT back
-        result = np.real(np.fft.ifft2(np.fft.ifftshift(target_fft)))
-
-        if face_bbox:
-            target[c, y1:y2, x1:x2] = result
-        else:
-            target[c] = result
-
-    return target[np.newaxis]
+    return {
+        "swapped_image": swapped_image,
+        "swapped_latent": swapped_latent,
+        "source_image": source_res["image"],
+        "target_image": target_res["image"],
+        "source_final_latent": source_res["final_latent"],
+        "target_final_latent": target_res["final_latent"],
+    }
 
 
 def run(
@@ -99,7 +93,7 @@ def run(
     output_base: str = "outputs",
     num_steps: int = 20,
 ):
-    """Run Experiment 5: Naive Frequency Injection Test."""
+    """Run Experiment 5: Channel-Based Identity Transplant."""
     import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_5", output_base)
     print(f"Experiment 5 output: {out_dir}")
@@ -107,205 +101,184 @@ def run(
     pipe = PipelineWrapper(model_type)
     scorer = ArcFaceScorer()
 
-    seeds = list(range(min(n_seeds, 20)))
-    n_steps = num_steps
+    seeds = list(range(min(n_seeds, 5)))
+    channels_to_test = [0, 1, 2, 3]  # Test all channels to compare
+    swap_steps = [num_steps // 4, num_steps // 2, (3 * num_steps) // 4]  # Early, mid, late
+
     results_rows = []
 
-    # Reference face
-    ref_prompt = "portrait photo of a young woman with red hair, studio lighting, detailed face"
-    print("Generating reference face...")
-    ref_result = pipe.generate(ref_prompt, seed=99, save_step_latents=False)
-    ref_image = ref_result["image"]
-    ref_latent = ref_result["final_latent"]
-    ref_image.save(out_dir / "plots" / "reference.png")
+    for source_name, source_prompt in SOURCE_PROMPTS:
+        print(f"\n{'='*60}")
+        print(f"Source identity: {source_name}")
 
-    ref_encoded = pipe.encode_image(ref_image)
+        for target_idx, target_prompt in enumerate(TARGET_PROMPTS):
+            print(f"\n  Target {target_idx}: {target_prompt[:60]}...")
 
-    ref_face_bbox = detect_face_bbox(ref_image)
-    ref_embedding = scorer.get_embedding(ref_image)
-    if ref_embedding is None:
-        print("WARNING: No face in reference image. Results may be unreliable.")
+            for seed in tqdm(seeds, desc=f"  Seeds"):
+                # Get source identity embedding from a clean generation
+                source_res = pipe.generate(source_prompt, seed, num_inference_steps=num_steps, save_step_latents=False)
+                source_emb = scorer.get_embedding(source_res["image"])
 
-    # Target generation
-    target_prompt = "portrait photo of an old man with a beard, outdoor lighting"
+                target_res = pipe.generate(target_prompt, seed, num_inference_steps=num_steps, save_step_latents=False)
+                target_emb = scorer.get_embedding(target_res["image"])
 
-    bands_to_test = ["low", "mid", "high", "all"]
+                # Baseline: ArcFace between unmodified source and target
+                baseline_sim = None
+                if source_emb is not None and target_emb is not None:
+                    baseline_sim = float(np.dot(source_emb, target_emb))
 
-    for seed in tqdm(seeds, desc="Seeds"):
-        # Generate target normally
-        target_result = pipe.generate(
-            target_prompt, seed=seed,
-            num_inference_steps=n_steps,
-            save_step_latents=True,
-            output_dir=out_dir if save_latents else None,
-        )
-        target_image = target_result["image"]
-        target_latent = target_result["final_latent"]
-        target_image.save(out_dir / "plots" / f"target_seed{seed}.png")
+                # Save sample images for first seed
+                if seed == 0:
+                    source_res["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_source.png")
+                    target_res["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_target.png")
 
-        target_face_bbox = detect_face_bbox(target_image)
-        target_latent_bbox = None
-        if target_face_bbox:
-            target_latent_bbox = pixel_bbox_to_latent_bbox(
-                target_face_bbox, pipe.vae_scale_factor
-            )
-
-        # === Approach 1: Post-generation frequency replacement ===
-        for band in bands_to_test:
-            # Global replacement
-            injected = _inject_frequencies(target_latent, ref_encoded, band=band)
-            injected_image = pipe.decode_latent(injected)
-            injected_image.save(
-                out_dir / "plots" / f"injected_global_{band}_seed{seed}.png"
-            )
-
-            arcface_sim = None
-            if ref_embedding is not None:
-                inj_emb = scorer.get_embedding(injected_image)
-                if inj_emb is not None:
-                    arcface_sim = float(np.dot(ref_embedding, inj_emb))
-
-            results_rows.append({
-                "seed": seed,
-                "approach": "post_generation",
-                "band": band,
-                "region": "global",
-                "arcface_similarity": arcface_sim,
-                "mse_vs_target": compute_mse(target_image, injected_image),
-                "ssim_vs_target": compute_ssim(target_image, injected_image),
-            })
-
-            # Face-region replacement
-            if target_latent_bbox:
-                injected_face = _inject_frequencies(
-                    target_latent, ref_encoded,
-                    band=band, face_bbox=target_latent_bbox,
-                )
-                injected_face_image = pipe.decode_latent(injected_face)
-                injected_face_image.save(
-                    out_dir / "plots" / f"injected_face_{band}_seed{seed}.png"
-                )
-
-                arcface_sim_face = None
-                if ref_embedding is not None:
-                    inj_face_emb = scorer.get_embedding(injected_face_image)
-                    if inj_face_emb is not None:
-                        arcface_sim_face = float(np.dot(ref_embedding, inj_face_emb))
-
-                results_rows.append({
-                    "seed": seed,
-                    "approach": "post_generation",
-                    "band": band,
-                    "region": "face",
-                    "arcface_similarity": arcface_sim_face,
-                    "mse_vs_target": compute_mse(target_image, injected_face_image),
-                    "ssim_vs_target": compute_ssim(target_image, injected_face_image),
-                })
-
-                del injected_face, injected_face_image
-
-            del injected, injected_image
-            gc.collect()
-
-        # === Approach 2: Initial noise modification ===
-        # Noise the reference to match step 0 (pure noise level)
-        if len(pipe.pipe.scheduler.timesteps) > 0:
-            initial_timestep = pipe.pipe.scheduler.timesteps[0].item()
-            noised_ref = pipe.add_noise_to_latent(ref_encoded, initial_timestep, seed=seed)
-
-            for band in ["mid", "all"]:
-                modified_noise = _inject_frequencies(
-                    target_result["step_latents"][0] if target_result["step_latents"]
-                    else target_latent,
-                    noised_ref, band=band,
-                )
-                # Can't easily re-denoise from modified noise without hacking the pipeline
-                # So just decode to see what the modified initial state looks like
-                modified_image = pipe.decode_latent(modified_noise)
-                modified_image.save(
-                    out_dir / "plots" / f"noise_inject_{band}_seed{seed}.png"
-                )
-
-                results_rows.append({
-                    "seed": seed,
-                    "approach": "initial_noise",
-                    "band": band,
-                    "region": "global",
-                    "arcface_similarity": None,  # Noise decode won't have faces
-                    "mse_vs_target": None,
-                    "ssim_vs_target": None,
-                })
-
-                del modified_noise, modified_image
+                del source_res, target_res
                 gc.collect()
 
-        # === Approach 3: Mid-generation injection (step 25) ===
-        mid_step = n_steps // 2
-        if mid_step < len(target_result["step_latents"]):
-            mid_latent = target_result["step_latents"][mid_step]
-            timestep = pipe.pipe.scheduler.timesteps[mid_step].item()
-            noised_ref_mid = pipe.add_noise_to_latent(ref_encoded, timestep, seed=seed)
+                # Test each channel swap at each step
+                for channel in channels_to_test:
+                    for swap_step in swap_steps:
+                        try:
+                            result = _swap_channel_at_step(
+                                pipe, source_prompt, target_prompt,
+                                seed, channel, swap_step, num_steps,
+                            )
 
-            for band in ["mid", "all"]:
-                injected_mid = _inject_frequencies(
-                    mid_latent, noised_ref_mid, band=band,
-                )
-                injected_mid_image = pipe.decode_latent(injected_mid)
-                injected_mid_image.save(
-                    out_dir / "plots" / f"mid_inject_{band}_seed{seed}.png"
-                )
+                            # ArcFace: does swapped image look more like source?
+                            swap_emb = scorer.get_embedding(result["swapped_image"])
+                            arcface_to_source = None
+                            arcface_to_target = None
+                            if swap_emb is not None:
+                                if source_emb is not None:
+                                    arcface_to_source = float(np.dot(source_emb, swap_emb))
+                                if target_emb is not None:
+                                    arcface_to_target = float(np.dot(target_emb, swap_emb))
 
-                arcface_sim_mid = None
-                if ref_embedding is not None:
-                    mid_emb = scorer.get_embedding(injected_mid_image)
-                    if mid_emb is not None:
-                        arcface_sim_mid = float(np.dot(ref_embedding, mid_emb))
+                            # Scene preservation: SSIM between swapped and original target
+                            ssim_to_target = compute_ssim(
+                                result["target_image"], result["swapped_image"]
+                            )
 
-                results_rows.append({
-                    "seed": seed,
-                    "approach": "mid_generation",
-                    "band": band,
-                    "region": "global",
-                    "arcface_similarity": arcface_sim_mid,
-                    "mse_vs_target": compute_mse(target_image, injected_mid_image),
-                    "ssim_vs_target": compute_ssim(target_image, injected_mid_image),
-                })
+                            results_rows.append({
+                                "source": source_name,
+                                "target_idx": target_idx,
+                                "seed": seed,
+                                "channel": channel,
+                                "swap_step": swap_step,
+                                "swap_step_frac": swap_step / num_steps,
+                                "arcface_to_source": arcface_to_source,
+                                "arcface_to_target": arcface_to_target,
+                                "baseline_arcface": baseline_sim,
+                                "identity_transfer": (arcface_to_source - baseline_sim) if (arcface_to_source and baseline_sim) else None,
+                                "ssim_to_target": ssim_to_target,
+                            })
 
-                del injected_mid, injected_mid_image
-                gc.collect()
+                            # Save key swap images
+                            if seed == 0 and swap_step == num_steps // 2:
+                                result["swapped_image"].save(
+                                    out_dir / "plots" / f"{source_name}_target{target_idx}_swap_ch{channel}_step{swap_step}.png"
+                                )
 
-        del target_result, target_image, target_latent
-        gc.collect()
+                            del result
+                            gc.collect()
+                            torch.cuda.empty_cache()
 
-    # Save results
+                        except Exception as e:
+                            print(f"    Error: ch{channel} step{swap_step} seed{seed}: {e}")
+                            results_rows.append({
+                                "source": source_name, "target_idx": target_idx,
+                                "seed": seed, "channel": channel,
+                                "swap_step": swap_step, "swap_step_frac": swap_step / num_steps,
+                                "arcface_to_source": None, "arcface_to_target": None,
+                                "baseline_arcface": baseline_sim,
+                                "identity_transfer": None, "ssim_to_target": None,
+                            })
+
+    # Analysis
     df = pd.DataFrame(results_rows)
     df.to_csv(out_dir / "results.csv", index=False)
 
-    # Summary plot: ArcFace similarity by approach and band
-    if not df.empty and df["arcface_similarity"].notna().any():
-        summary = df[df["arcface_similarity"].notna()].groupby(
-            ["approach", "band", "region"]
-        )["arcface_similarity"].agg(["mean", "std"]).reset_index()
+    if not df.empty and df["identity_transfer"].notna().any():
+        print(f"\n{'='*60}")
+        print("EXPERIMENT 5 RESULTS: Channel-Based Identity Transplant")
+        print(f"{'='*60}")
+
+        # Key metric: identity transfer per channel (averaged across steps, seeds, pairs)
+        print("\n--- Identity Transfer by Channel (ArcFace gain over baseline) ---")
+        for ch in sorted(df["channel"].unique()):
+            ch_df = df[(df["channel"] == ch) & df["identity_transfer"].notna()]
+            if not ch_df.empty:
+                mean_transfer = ch_df["identity_transfer"].mean()
+                std_transfer = ch_df["identity_transfer"].std()
+                mean_ssim = ch_df["ssim_to_target"].mean()
+                print(f"  Ch {ch}: identity_transfer = {mean_transfer:+.3f} ± {std_transfer:.3f}, "
+                      f"scene_preservation (SSIM) = {mean_ssim:.3f}")
+
+        # Identity transfer by swap step
+        print("\n--- Identity Transfer by Swap Step (Ch 3 only) ---")
+        ch3_df = df[(df["channel"] == 3) & df["identity_transfer"].notna()]
+        for step in sorted(ch3_df["swap_step"].unique()):
+            step_df = ch3_df[ch3_df["swap_step"] == step]
+            print(f"  Step {step}/{num_steps}: transfer = {step_df['identity_transfer'].mean():+.3f} ± "
+                  f"{step_df['identity_transfer'].std():.3f}")
+
+        # Summary CSV
+        summary = df[df["identity_transfer"].notna()].groupby(["channel", "swap_step"]).agg({
+            "identity_transfer": ["mean", "std"],
+            "ssim_to_target": ["mean"],
+            "arcface_to_source": ["mean"],
+        }).reset_index()
+        summary.columns = ["channel", "swap_step", "transfer_mean", "transfer_std", "ssim_mean", "arcface_mean"]
         summary.to_csv(out_dir / "summary.csv", index=False)
 
-        # Plot
-        import matplotlib.pyplot as plt
+        # Plot: identity transfer by channel
+        channels = sorted(df["channel"].unique())
+        ch_means = [df[(df["channel"] == c) & df["identity_transfer"].notna()]["identity_transfer"].mean() for c in channels]
+        ch_stds = [df[(df["channel"] == c) & df["identity_transfer"].notna()]["identity_transfer"].std() for c in channels]
 
-        fig, ax = plt.subplots(figsize=(12, 6))
-        approaches = summary["approach"].unique()
-        x = np.arange(len(summary))
-        labels = [
-            f"{r['approach']}\n{r['band']}\n{r['region']}"
-            for _, r in summary.iterrows()
-        ]
-        ax.bar(x, summary["mean"], yerr=summary["std"], capsize=3)
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=7, rotation=45, ha="right")
-        ax.set_ylabel("ArcFace Similarity to Reference")
-        ax.set_title(f"Frequency Injection Results ({model_type.upper()})")
-        ax.grid(True, alpha=0.3, axis="y")
+        plot_line_chart(
+            np.array(channels),
+            {"Identity Transfer (ArcFace gain)": np.array(ch_means)},
+            out_dir / "plots" / "identity_transfer_by_channel.png",
+            xlabel="Swapped Channel",
+            ylabel="ArcFace Similarity Gain vs Baseline",
+            title=f"Identity Transfer by Channel Swap ({model_type.upper()})",
+            yerr_dict={"Identity Transfer (ArcFace gain)": np.array(ch_stds)},
+        )
+
+        # Plot: transfer vs swap step for each channel
+        step_data = {}
+        for ch in channels:
+            ch_df = df[(df["channel"] == ch) & df["identity_transfer"].notna()]
+            steps = sorted(ch_df["swap_step"].unique())
+            means = [ch_df[ch_df["swap_step"] == s]["identity_transfer"].mean() for s in steps]
+            step_data[f"Ch {ch}"] = np.array(means)
+
+        if step_data:
+            plot_line_chart(
+                np.array(steps),
+                step_data,
+                out_dir / "plots" / "transfer_vs_swap_step.png",
+                xlabel="Swap Step",
+                ylabel="Identity Transfer (ArcFace gain)",
+                title=f"Identity Transfer vs Swap Timing ({model_type.upper()})",
+            )
+
+        # Plot: identity transfer vs scene preservation (the tradeoff)
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(figsize=(10, 7))
+        for ch in channels:
+            ch_df = df[(df["channel"] == ch) & df["identity_transfer"].notna() & df["ssim_to_target"].notna()]
+            ax.scatter(ch_df["ssim_to_target"], ch_df["identity_transfer"],
+                      label=f"Ch {ch}", alpha=0.6, s=40)
+        ax.set_xlabel("Scene Preservation (SSIM to target)", fontsize=11)
+        ax.set_ylabel("Identity Transfer (ArcFace gain)", fontsize=11)
+        ax.set_title(f"Identity Transfer vs Scene Preservation Tradeoff ({model_type.upper()})", fontsize=13)
+        ax.legend(fontsize=9)
+        ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+        ax.grid(True, alpha=0.3)
         plt.tight_layout()
-        plt.savefig(out_dir / "plots" / "injection_results_summary.png", dpi=150)
+        plt.savefig(out_dir / "plots" / "transfer_vs_preservation.png", dpi=150)
         plt.close()
 
     print(f"\nExperiment 5 complete. Results saved to {out_dir}")
