@@ -64,6 +64,7 @@ class PipelineWrapper:
             use_safetensors=True,
         )
         self.pipe.to("cuda")
+        self.pipe.enable_vae_tiling()
         self.vae = self.pipe.vae
         self.vae_scale_factor = self.pipe.vae_scale_factor  # typically 8
         self.latent_channels = 4
