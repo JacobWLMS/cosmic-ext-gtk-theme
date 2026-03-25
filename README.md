@@ -1,39 +1,38 @@
 # Identity Signal Analysis in Diffusion Model Latent Spaces
 
-Exploring whether facial identity information can be isolated and manipulated in diffusion model latent spaces through frequency-domain analysis.
+Investigating whether facial identity information can be isolated, measured, and manipulated in diffusion model latent spaces through frequency-domain and channel analysis.
 
 ## Setup
 
-```bash
-pip install -r requirements.txt
-```
+Experiments run on **Google Colab** (Pro, L4/T4 GPU). The notebook clones this repo, installs deps, and runs each experiment.
 
-## Usage
-
-```bash
-# Run a specific experiment
-python run_experiment.py --experiment 1 --model sdxl --seeds 50
-
-# Quick mode (5 seeds)
-python run_experiment.py --experiment 1 --model sdxl --quick
-
-# Run all priority experiments
-python run_experiment.py --experiment 1 2 3 6 --model sdxl --seeds 50
-
-# Skip saving raw latents to save disk space
-python run_experiment.py --experiment 1 --model sdxl --no-save-latents
-```
+1. Open `identity_signal_analysis.ipynb` in Colab
+2. Connect a GPU runtime (L4 recommended)
+3. Run setup cells, then the active experiment
 
 ## Experiments
 
-1. **Paired Latent Frequency Analysis** - What changes in frequency domain when only identity changes?
-2. **Within-Identity Latent Invariance** - What stays constant for the same person across contexts?
-3. **Step-by-Step Identity Emergence** - At what denoising step does identity lock in?
-4. **Timestep-Matched Reference Correlation** - Can we correlate reference face latents with mid-denoising latents?
-5. **Naive Frequency Injection Test** - Does brute-force frequency injection shift identity?
-6. **Channel Importance Analysis** - Do specific VAE channels carry more identity info?
-7. **PCA on Identity** - Is identity a linear subspace in latent space?
+| # | Name | Status | Key Finding |
+|---|------|--------|-------------|
+| 1 | Paired Frequency Analysis | Done | Ch 2 shows largest frequency shifts on identity change |
+| 2 | Within-Identity Invariance | Done | Ch 3 is best identity discriminator (ratio 0.046) |
+| 3 | Identity Emergence | Done | Identity locks in at steps 7-9 during denoising |
+| 5 | Channel Identity Transplant | Done | UNet heals single-channel swaps; Ch 3 swap shows most identity shift |
+| 6 | Channel Importance (Zeroing) | Done | Ch 0 catastrophic, Ch 3 significant, Ch 1/2 minimal |
+| 7 | PCA on Identity | Next | Is identity a linear subspace in Ch 3? |
 
-## Hardware
+See [RESEARCH.md](RESEARCH.md) for full findings and the hierarchical channel model.
 
-Designed for RTX 3080 (10GB VRAM) with CPU offloading. All generations at 512x512.
+## Architecture
+
+```
+identity_analysis/       # Core library (pipeline, FFT, scoring, plotting)
+experiments/             # Experiment scripts (each has run() entry point)
+identity_signal_analysis.ipynb   # Colab notebook
+EXP{N}_RESEARCH.md      # Per-experiment reports
+RESEARCH.md              # Cross-experiment synthesis
+```
+
+## Model
+
+SDXL Base 1.0 (fp16), 1024x1024, 12 steps, guidance 7.5 + negative prompt.

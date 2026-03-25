@@ -17,3 +17,7 @@ venv/
 .cache/
 models/
 insightface_models/
+.flash/
+.mcp.json
+.runpod/
+flash_worker.py
