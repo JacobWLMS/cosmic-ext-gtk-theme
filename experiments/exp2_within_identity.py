@@ -31,6 +31,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 2: Within-Identity Latent Invariance."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_2", output_base)
     print(f"Experiment 2 output: {out_dir}")
 

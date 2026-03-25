@@ -25,6 +25,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 7: PCA on Identity."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_7", output_base)
     print(f"Experiment 7 output: {out_dir}")
 

@@ -34,6 +34,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 4: Timestep-Matched Reference Correlation."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_4", output_base)
     print(f"Experiment 4 output: {out_dir}")
 

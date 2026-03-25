@@ -38,6 +38,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 3: Step-by-Step Identity Emergence."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_3", output_base)
     print(f"Experiment 3 output: {out_dir}")
 

@@ -100,6 +100,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 5: Naive Frequency Injection Test."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_5", output_base)
     print(f"Experiment 5 output: {out_dir}")
 

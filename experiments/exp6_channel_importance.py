@@ -28,6 +28,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 6: Channel Importance Analysis."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_6", output_base)
     print(f"Experiment 6 output: {out_dir}")
 

@@ -31,6 +31,7 @@ def run(
     num_steps: int = 20,
 ):
     """Run Experiment 1: Paired Latent Frequency Analysis."""
+    import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_1", output_base)
     print(f"Experiment 1 output: {out_dir}")
 
