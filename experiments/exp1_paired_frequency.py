@@ -54,16 +54,12 @@ def run(
         pair_raw_diffs = []
 
         for seed in tqdm(seeds, desc=f"  Generating"):
-            # Generate paired images
-            res_a = pipe.generate(
-                prompt_a, seed,
-                save_step_latents=False,
-                output_dir=out_dir if save_latents else None,
-            )
-            res_b = pipe.generate(
-                prompt_b, seed,
-                save_step_latents=False,
-                output_dir=out_dir if save_latents else None,
+            # Batched pair generation — ~2x faster than sequential
+            need_images = (seed == 0)  # only decode images for first seed
+            res_a, res_b = pipe.generate_pair(
+                prompt_a, prompt_b, seed,
+                num_inference_steps=num_steps,
+                decode_images=need_images,
             )
 
             lat_a = res_a["final_latent"]
@@ -101,7 +97,7 @@ def run(
                 )
 
             # Save example images for first seed
-            if seed == 0:
+            if need_images:
                 res_a["image"].save(
                     out_dir / "plots" / f"pair{pair_idx}_identity_a.png"
                 )

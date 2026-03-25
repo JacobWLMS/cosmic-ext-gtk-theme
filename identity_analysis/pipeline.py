@@ -162,6 +162,70 @@ class PipelineWrapper:
         }
 
     @torch.no_grad()
+    def generate_pair(
+        self,
+        prompt_a: str,
+        prompt_b: str,
+        seed: int,
+        num_inference_steps: int = 20,
+        negative_prompt: Optional[str] = None,
+        guidance_scale: float = 7.5,
+        height: int = 1024,
+        width: int = 1024,
+        decode_images: bool = False,
+    ) -> tuple[dict, dict]:
+        """Generate a pair of images in a single batched forward pass.
+
+        ~2x faster than two separate generate() calls. Skips VAE decode
+        by default since experiments only need latents.
+
+        Returns (result_a, result_b) each with keys: final_latent, image (None if not decoded)
+        """
+        if negative_prompt is None:
+            negative_prompt = self.DEFAULT_NEGATIVE_PROMPT
+
+        generator_a = torch.Generator(device="cpu").manual_seed(seed)
+        generator_b = torch.Generator(device="cpu").manual_seed(seed)
+
+        # Capture latents from the batched output
+        final_latents_holder = {}
+
+        def capture_latents(pipe, step_index, timestep, callback_kwargs):
+            final_latents_holder["latents"] = callback_kwargs["latents"].cpu().float().clone()
+            return callback_kwargs
+
+        # Batch both prompts together
+        kwargs = dict(
+            prompt=[prompt_a, prompt_b],
+            negative_prompt=[negative_prompt, negative_prompt],
+            guidance_scale=guidance_scale,
+            height=height,
+            width=width,
+            num_inference_steps=num_inference_steps,
+            generator=[generator_a, generator_b],
+            output_type="pil" if decode_images else "latent",
+            callback_on_step_end=capture_latents,
+            callback_on_step_end_tensor_inputs=["latents"],
+        )
+
+        result = self.pipe(**kwargs)
+
+        latents = final_latents_holder["latents"].numpy()
+        lat_a = latents[0:1]  # [1, C, H, W]
+        lat_b = latents[1:2]
+
+        img_a = result.images[0] if decode_images else None
+        img_b = result.images[1] if decode_images else None
+
+        del result
+        torch.cuda.empty_cache()
+
+        return (
+            {"image": img_a, "final_latent": lat_a, "step_latents": []},
+            {"image": img_b, "final_latent": lat_b, "step_latents": []},
+        )
+
+    @torch.no_grad()
     def encode_image(self, image: Image.Image) -> np.ndarray:
         """Encode an image through the VAE encoder to get a clean latent."""
         from torchvision import transforms
