@@ -1,0 +1,6 @@
+view,mean_silhouette,max_silhouette,view_label
+ch0,-0.103855446,-0.077436626,Ch 0 (Luminance)
+ch1,-0.11330895,-0.08719503,Ch 1 (Red-Cyan)
+ch2,-0.11454813,-0.08859385,Ch 2 (Warm-Cool)
+ch3,-0.1133192,-0.08354864,Ch 3 (Identity Fingerprint)
+full,-0.10145179,-0.07914268,Full Latent (4ch)

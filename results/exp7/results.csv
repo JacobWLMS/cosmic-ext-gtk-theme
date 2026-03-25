@@ -1,0 +1,26 @@
+view,view_label,n_dims,silhouette
+full,Full Latent (4ch),2,-0.11502396
+full,Full Latent (4ch),3,-0.11441755
+full,Full Latent (4ch),5,-0.10839759
+full,Full Latent (4ch),10,-0.09027717
+full,Full Latent (4ch),20,-0.07914268
+ch0,Ch 0 (Luminance),2,-0.12831958
+ch0,Ch 0 (Luminance),3,-0.11560331
+ch0,Ch 0 (Luminance),5,-0.10566267
+ch0,Ch 0 (Luminance),10,-0.092255004
+ch0,Ch 0 (Luminance),20,-0.077436626
+ch1,Ch 1 (Red-Cyan),2,-0.13736017
+ch1,Ch 1 (Red-Cyan),3,-0.13020381
+ch1,Ch 1 (Red-Cyan),5,-0.112151
+ch1,Ch 1 (Red-Cyan),10,-0.09963475
+ch1,Ch 1 (Red-Cyan),20,-0.08719503
+ch2,Ch 2 (Warm-Cool),2,-0.13367671
+ch2,Ch 2 (Warm-Cool),3,-0.12649123
+ch2,Ch 2 (Warm-Cool),5,-0.1237983
+ch2,Ch 2 (Warm-Cool),10,-0.10018059
+ch2,Ch 2 (Warm-Cool),20,-0.08859385
+ch3,Ch 3 (Identity Fingerprint),2,-0.13545817
+ch3,Ch 3 (Identity Fingerprint),3,-0.12680012
+ch3,Ch 3 (Identity Fingerprint),5,-0.121711776
+ch3,Ch 3 (Identity Fingerprint),10,-0.09907734
+ch3,Ch 3 (Identity Fingerprint),20,-0.08354864

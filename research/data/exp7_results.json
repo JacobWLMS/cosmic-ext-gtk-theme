@@ -1,0 +1,32 @@
+{
+  "experiment": 7,
+  "name": "PCA on Identity",
+  "date": "2026-03-25",
+  "model": "sdxl",
+  "resolution": "1024x1024",
+  "steps": 12,
+  "n_seeds": 10,
+  "n_prompts_per_celeb": 10,
+  "celebrities": ["Brad Pitt", "Taylor Swift", "Morgan Freeman", "Scarlett Johansson", "Keanu Reeves"],
+  "total_samples": 50,
+  "gpu": "L4",
+  "silhouette_scores": {
+    "full": {"2d": -0.115, "3d": -0.114, "5d": -0.108, "10d": -0.090, "20d": -0.079},
+    "ch0":  {"2d": -0.128, "3d": -0.116, "5d": -0.106, "10d": -0.092, "20d": -0.077},
+    "ch1":  {"2d": -0.137, "3d": -0.130, "5d": -0.112, "10d": -0.100, "20d": -0.087},
+    "ch2":  {"2d": -0.134, "3d": -0.126, "5d": -0.124, "10d": -0.100, "20d": -0.089},
+    "ch3":  {"2d": -0.135, "3d": -0.127, "5d": -0.122, "10d": -0.099, "20d": -0.084}
+  },
+  "mean_silhouette": {
+    "full": -0.101,
+    "ch0": -0.104,
+    "ch1": -0.113,
+    "ch2": -0.115,
+    "ch3": -0.113
+  },
+  "best_overall": {"view": "full", "dims": 20, "score": -0.079},
+  "key_finding": "ALL silhouette scores negative. Identity does NOT form linear clusters in PCA space — not in Ch 3, not in any channel, not in the full latent. The identity subspace hypothesis is rejected for linear PCA. Scene/style variation dominates over identity in latent space.",
+  "interpretation": "Negative silhouette means samples are closer to OTHER identity clusters than their own. This suggests that scene, style, lighting, and composition create more variance in latent space than identity does. Identity signal exists (proven by Exp 2/6) but is not linearly separable from these confounds.",
+  "channel_ranking_by_mean": ["full", "ch0", "ch1", "ch3", "ch2"],
+  "note": "Full latent slightly outperforms individual channels, suggesting identity information is distributed across channels. Ch 0 and full are closest to zero (least bad), consistent with Ch 0 carrying the most total variance."
+}
