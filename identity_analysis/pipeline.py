@@ -86,21 +86,33 @@ class PipelineWrapper:
             self.model_type = "sdxl"
             self._load_sdxl()
 
+    # Default negative prompt to steer SDXL away from anime/stylized outputs
+    DEFAULT_NEGATIVE_PROMPT = (
+        "anime, cartoon, illustration, painting, drawing, art, sketch, "
+        "3d render, cgi, unrealistic, deformed, disfigured, bad anatomy, "
+        "blurry, low quality, watermark, text"
+    )
+
     @torch.no_grad()
     def generate(
         self,
         prompt: str,
         seed: int,
         num_inference_steps: int = 20,
+        negative_prompt: Optional[str] = None,
+        guidance_scale: float = 7.5,
         output_dir: Optional[Path] = None,
         save_step_latents: bool = True,
-        height: int = 512,
-        width: int = 512,
+        height: int = 1024,
+        width: int = 1024,
     ) -> dict:
         """Generate an image and optionally dump latents at every step.
 
         Returns dict with keys: image, final_latent, step_latents (list of np arrays)
         """
+        if negative_prompt is None:
+            negative_prompt = self.DEFAULT_NEGATIVE_PROMPT
+
         generator = torch.Generator(device="cpu").manual_seed(seed)
 
         step_latents = []
@@ -124,6 +136,8 @@ class PipelineWrapper:
 
         kwargs = dict(
             prompt=prompt,
+            negative_prompt=negative_prompt,
+            guidance_scale=guidance_scale,
             height=height,
             width=width,
             num_inference_steps=num_inference_steps,
