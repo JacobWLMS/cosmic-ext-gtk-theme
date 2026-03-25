@@ -20,6 +20,22 @@ Accidental or unexpected findings worth revisiting later.
 
 ---
 
+### 4. CLIP CLS token carries NO identity; mean pooling carries ALL of it
+**Found during:** Exploration Test C
+**What:** CLS token PCA showed 0.0 silhouette (zero clustering) while mean-pooled embeddings showed +0.40. Identity in CLIP is distributed across all token positions, not concentrated in the CLS summary token.
+**Why it matters:** This is relevant for any CLIP-based application. If you're using CLS pooling for identity-related tasks, you're throwing away the signal. Mean pooling captures it. This could explain performance differences in face recognition systems using CLIP.
+**Follow up:** Which token positions carry the most identity? Is it the name tokens specifically, or is it distributed even across non-name tokens?
+
+---
+
+### 5. Identity signal location follows the diffusion pipeline direction
+**Found during:** Synthesis of all experiments
+**What:** Identity is separable in conditioning (CLIP: +0.40) → partially separable in mid-denoising (Exp 3: emerges steps 7-9) → inseparable in final latent (Exp 7: all negative). The signal degrades as it flows through the pipeline.
+**Why it matters:** This suggests a fundamental property of diffusion models: the denoising process entangles conditioned attributes with spatial/structural information. Any manipulation must happen early in the pipeline (conditioning) or at the conditioning-latent interface (cross-attention), not at the output.
+**Follow up:** Is this true for ALL conditioned attributes (style, composition, etc.) or specific to identity?
+
+---
+
 ### 3. Ch 3 identity signal emerges BEFORE Ch 0 foundation
 **Found during:** Exp 3
 **What:** Ch 3 identity divergence begins at steps 7-9, slightly leading Ch 0. The fingerprint forms before the foundation fully resolves.
