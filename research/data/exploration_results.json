@@ -1,0 +1,45 @@
+{
+  "date": "2026-03-25",
+  "model": "sdxl",
+  "gpu": "L4 (RunPod)",
+  "test_a_nonlinear": {
+    "description": "t-SNE and UMAP on identity latents — can nonlinear methods find clusters PCA missed?",
+    "verdict": "NO — all scores negative, worse than PCA",
+    "best": {"method": "full_umap", "score": -0.150},
+    "ch3_pca": -0.168,
+    "ch3_tsne_p5": -0.206,
+    "ch3_tsne_p10": -0.216,
+    "ch3_tsne_p15": -0.221,
+    "ch3_umap": -0.204,
+    "full_pca": -0.167,
+    "full_tsne_p5": -0.195,
+    "full_tsne_p10": -0.194,
+    "full_tsne_p15": -0.198,
+    "full_umap": -0.150
+  },
+  "test_b_scene_controlled": {
+    "description": "Same prompt template × different seeds — does controlling for scene reveal identity clusters?",
+    "verdict": "MARGINAL improvement but still negative. Ch3 20d = -0.071 vs Exp7's -0.084",
+    "best": {"method": "ch3_pca_20d", "score": -0.071},
+    "ch3_pca_2d": -0.125,
+    "ch3_pca_5d": -0.111,
+    "ch3_pca_10d": -0.088,
+    "ch3_pca_20d": -0.071,
+    "full_pca_2d": -0.158,
+    "full_pca_5d": -0.131,
+    "full_pca_10d": -0.089,
+    "full_pca_20d": -0.084
+  },
+  "test_c_clip": {
+    "description": "CLIP text embeddings — do celebrity names cluster in conditioning space?",
+    "verdict": "YES — strong positive clustering! Identity is linearly separable in CLIP space",
+    "best": {"method": "clip_mean_pca_5d", "score": 0.403},
+    "clip_cls_pca_2d": 0.000,
+    "clip_cls_pca_5d": 0.000,
+    "clip_cls_pca_10d": 0.000,
+    "clip_mean_pca_2d": 0.288,
+    "clip_mean_pca_5d": 0.403,
+    "clip_mean_pca_10d": 0.338
+  },
+  "key_insight": "Identity information is linearly separable in CLIP text embedding space (silhouette +0.40) but NOT in the VAE latent space (all negative). This means identity lives upstream in the conditioning, not downstream in the pixel/latent representation. The UNet distributes identity across all channels during denoising, making it inseparable in the output latent."
+}
