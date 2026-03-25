@@ -134,6 +134,49 @@ Next directions:
 
 ---
 
+## Cycle 11: Qwen3 Conditioning Space Analysis
+**Date:** 2026-03-25 | **GPU:** L4 (RunPod) | **Status:** COMPLETE — MAJOR FINDING
+
+**Question:** Is identity linearly separable in Qwen3 LLM embeddings? Z-Image uses Qwen3ForCausalLM (decoder-only, hidden_size=2560, 36 layers) as its text encoder — not CLIP or T5.
+
+**Prediction:** Mean-pooled Qwen3 hidden states will show positive identity silhouette (>0.2). Language models encode celebrity identity regardless of training objective. Last-token pooling may outperform mean pooling (decoder-only models concentrate information later in the sequence).
+
+**Result:** **Name-token pooling: +0.792 silhouette** (layer -6, 5D). Nearly 2x CLIP's +0.403. Mean pooling: +0.024. Last-token: -0.100. Identity is HYPERLOCALIZED in the literal name tokens — not distributed like CLIP.
+
+**Prediction assessment:** Partially correct, partially wrong.
+- CORRECT: Identity is separable in Qwen3 — stronger than CLIP
+- WRONG: Mean pooling does NOT work (+0.024 vs predicted >0.2) — non-name tokens drown out signal
+- WRONG: Last-token pooling is worst, not best — generation prompt token carries no identity
+- SURPRISE: Name-token extraction is the key insight. Identity is in the name itself, not the sentence.
+
+**Surprise:** Deeper layers carry MORE identity signal (layer -6 > -5 > ... > -1). The pipeline uses layer -2, which is suboptimal for identity. This depth inversion is unexpected.
+
+**Serendipity:** The Qwen3 chat template with `enable_thinking=True` adds system tokens that are NOT useful for identity. The signal-to-noise ratio is dramatically better when you extract only name tokens.
+
+**Decision:** → This is our headline finding. Priority: token embedding swap experiment to demonstrate practical identity manipulation. See research/FINDINGS.md for full writeup.
+
+---
+
+## Cycle 12: Identity Emergence Timing (Z-Image)
+**Date:** 2026-03-25 | **GPU:** L4 (RunPod) | **Status:** Running
+
+**Question:** At which of Z-Image's 9 flow-matching steps does identity lock in?
+**Prediction:** Identity emerges at steps 3-5 of 9 (~40-55%), proportional to SDXL's steps 7-9 of 20 (~40%). Face channels (1,6,9,12) emerge before background channels.
+**If confirmed:** → Flow-matching and DDPM have similar identity emergence dynamics. Swap timing at step 5 is correct.
+**If different:** → Flow-matching has distinct dynamics. May need to adjust swap step.
+
+---
+
+## Cycle 13: Multi-Channel Face Swap (Z-Image)
+**Date:** 2026-03-25 | **GPU:** L4 (RunPod) | **Status:** Running
+
+**Question:** Can swapping face channels (1,6,9,12) simultaneously transfer identity, overwhelming the DiT's healing?
+**Prediction:** Swapping all 4 face channels (25% of latent) will produce visible identity blending. Progressive: more channels = more transfer. Background channel control (ch 3,4,8,10) should show significantly less identity effect.
+**If confirmed:** → Z-Image's channel specialization enables latent-level identity manipulation that wasn't possible on SDXL. Major finding.
+**If rejected:** → DiT healing is as aggressive as UNet. Confirms conditioning is the only viable manipulation point.
+
+---
+
 ## Cycle 10: Architecture Decision — Z-Image Turbo as Primary
 **Date:** 2026-03-25 | **Status:** Decision cycle (no experiment)
 
