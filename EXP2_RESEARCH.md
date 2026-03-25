@@ -78,16 +78,18 @@ All channels have much higher within-identity than across-identity frequency var
 
 4. **All discrimination ratios are low (<0.05).** Identity is not cleanly separable in raw latent space using simple variance analysis. More sophisticated methods (PCA within channels, frequency band filtering) may be needed.
 
-### Cross-Experiment Synthesis: Dual-Channel Identity Model
+### Cross-Experiment Synthesis
 
-The combination of Exp 1 and Exp 2 reveals a **dual-channel identity model** in SDXL:
+> **Note (post-Exp 6 revision):** The "dual-channel identity model" framing below was superseded by a hierarchical model after Exp 6's channel zeroing results. Ch 0 turned out to be the foundation channel (not just scene), and Ch 2's reactivity turned out to be noise. See RESEARCH.md for the updated model.
+
+The combination of Exp 1 and Exp 2 reveals channel specialization in SDXL:
 
 | Role | Channel | Evidence |
 |------|---------|----------|
-| **Identity magnitude** | Ch 2 | Largest frequency difference when identity changes (Exp 1, 67% of pairs) |
+| **Foundation (identity + scene)** | Ch 0 | High variance in all conditions — carries everything |
 | **Identity fingerprint** | Ch 3 | Best discrimination ratio — stable within identity, varies between (Exp 2) |
-| **Scene/composition** | Ch 0 | High variance in both conditions — dominated by non-identity factors |
-| **Neutral** | Ch 1 | Low reactivity (Exp 1), moderate discrimination (Exp 2) |
+| **Identity detail (noisy)** | Ch 2 | Largest frequency difference when identity changes (Exp 1), but high within-identity variance |
+| **Style/texture** | Ch 1 | Low reactivity (Exp 1), moderate discrimination (Exp 2) |
 
 ### Implications for Next Experiments
 
