@@ -44,6 +44,14 @@ Accidental or unexpected findings worth revisiting later.
 
 ---
 
+### 7. Z-Image uses Qwen3 (decoder-only LLM) as text encoder — NOT CLIP or T5
+**Found during:** Cycle 9 architecture investigation
+**What:** Z-Image Turbo's `model_index.json` reveals `text_encoder: Qwen3Model` with `Qwen2Tokenizer`. This is a decoder-only large language model, not a contrastive encoder (CLIP) or encoder-only model (T5). Most diffusion models use CLIP or T5; using a full LLM as text encoder is unusual.
+**Why it matters:** Our CLIP conditioning finding (+0.40 identity separability) used mean-pooled contrastive embeddings. Qwen3 produces very different representations — causal, autoregressive, trained on text completion not image-text alignment. If identity is ALSO separable in Qwen3 embeddings, it would suggest identity separability is a universal property of language representations, not specific to CLIP's contrastive training. If NOT separable, it would mean our CLIP finding is architecture-specific.
+**Follow up:** Test identity clustering in Qwen3 embeddings. Compare pooling strategies (last token vs mean pool — decoder models typically use last-token pooling, not mean pooling).
+
+---
+
 ### 3. Ch 3 identity signal emerges BEFORE Ch 0 foundation
 **Found during:** Exp 3
 **What:** Ch 3 identity divergence begins at steps 7-9, slightly leading Ch 0. The fingerprint forms before the foundation fully resolves.

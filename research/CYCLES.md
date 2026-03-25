@@ -110,10 +110,57 @@ Append-only log. Each cycle follows: OBSERVE → EXPLAIN → PREDICT → TEST �
 ---
 
 ## Cycle 9: Z-Image Turbo Cross-Architecture Validation
-**Date:** 2026-03-25 | **GPU:** L4 (RunPod) | **Status:** Running
+**Date:** 2026-03-25 | **GPU:** L4 (RunPod) | **Status:** Complete
 
-**Question:** Does Z-Image Turbo (flow-matching DiT, different VAE) show the same patterns as SDXL?
+**Question:** Does Z-Image Turbo (flow-matching DiT, 16ch VAE) show the same patterns as SDXL?
 **Prediction:** If VAE latent identity clustering fails on Z-Image too, it confirms the finding is architecture-general, not SDXL-specific. CLIP clustering should still work since both use CLIP conditioning.
 **If confirmed:** → Architecture-general finding. Strengthens the case for conditioning-space manipulation.
 **If different:** → Z-Image may encode identity differently (different VAE, different denoiser). Could reveal what architectural choices matter for identity encoding.
-**Serendipity watch:** Z-Image uses fewer denoising steps (8 vs 12). Does identity emerge differently in a turbo model?
+**Serendipity watch:** Z-Image uses fewer denoising steps (9 vs SDXL 20). Does identity emerge differently in a turbo model?
+
+**Results:**
+- **Channel sensitivity:** 3.25x range (0.27→0.89) vs SDXL 1.25x. Channels 1, 6, 9, 12 visually and numerically confirmed as face-focused. Clear tier structure (high/medium/low).
+- **Discrimination ratios:** Best ch11=0.117, ch9=0.116 — **2.5x better than SDXL's best** (ch3=0.046). All Z-Image channels outperform SDXL's best.
+- **PCA clustering:** ALL negative. Best ch13=-0.137 (10d). **Worse than SDXL** (-0.079). More channels doesn't help linear separability.
+
+**Surprise:** Z-Image's 16 channels show dramatically better sensitivity and discrimination than SDXL — the channels genuinely specialize. But this specialization does NOT translate to linear separability. The discrimination ratios being uniformly distributed (not concentrated in face channels) suggests identity information is still entangled across the full latent. Also: Z-Image's PCA is worse than SDXL's, possibly because 16 channels = higher dimensionality = more noise axes for PCA to get lost in.
+
+**Decision:** → Architecture-general finding CONFIRMED. Identity lives in conditioning, not latent space. However, Z-Image's stronger channel specialization (3.25x vs 1.25x) and 2.5x better discrimination ratios make it a more promising platform for future experiments — there's more signal to work with, even if it's not linearly separable. **Committing to Z-Image Turbo as primary architecture going forward.**
+
+Next directions:
+1. Z-Image conditioning space analysis (does it use CLIP? T5? Both?)
+2. Multi-channel swap experiments (swap face channels 1+6+9+12 together — may overwhelm DiT healing)
+3. Cross-attention analysis in the DiT (different mechanism than UNet cross-attention)
+
+---
+
+## Cycle 10: Architecture Decision — Z-Image Turbo as Primary
+**Date:** 2026-03-25 | **Status:** Decision cycle (no experiment)
+
+**Context:** After completing SDXL phase (Exp 1-7 + exploration) and Z-Image validation (Cycle 9), choosing primary architecture for the next research phase.
+
+**Options considered:**
+| | SDXL | Z-Image Turbo |
+|---|---|---|
+| VAE channels | 4 | 16 |
+| Sensitivity range | 1.25x | 3.25x |
+| Best discrimination | 0.046 | 0.117 (2.5x better) |
+| Denoiser | UNet | DiT (transformer) |
+| Steps | 20 | 9 |
+| Prior research | Extensively studied | Relatively unexplored |
+| Conditioning | CLIP | T5 (to investigate) |
+| VRAM | ~12GB | ~21GB (needs offload on L4) |
+
+**Decision: Z-Image Turbo.**
+
+**Rationale:**
+1. **Novelty** — Z-Image is less explored in the research community. Findings here are more likely to be novel.
+2. **Signal strength** — 2.5x better discrimination ratios mean more signal to work with for manipulation experiments.
+3. **Channel specialization** — 16 channels with face-dedicated channels (1,6,9,12) opens multi-channel swap experiments that aren't possible with 4 channels.
+4. **DiT architecture** — transformer-based denoiser may have different healing dynamics than UNet. Cross-attention in DiT is structurally different.
+5. **T5 conditioning** — if Z-Image uses T5 instead of CLIP, the conditioning space analysis is a fresh investigation (not just replicating our CLIP finding).
+
+**Risks:**
+- VRAM: 21GB needs CPU offload on L4 (slow). May need A6000/A40 for production runs.
+- Less community tooling/documentation than SDXL.
+- bfloat16 requirement limits GPU options (no T4).
