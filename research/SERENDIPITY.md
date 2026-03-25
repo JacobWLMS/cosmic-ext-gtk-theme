@@ -36,6 +36,14 @@ Accidental or unexpected findings worth revisiting later.
 
 ---
 
+### 6. Z-Image 16ch VAE has dedicated face channels (1, 6, 9, 12)
+**Found during:** Z-Image Turbo exploration
+**What:** In Z-Image's 16-channel VAE, channels 1, 6, 9, 12 show concentrated red activation on face regions (observed visually) AND the highest identity sensitivity numerically (0.64-0.88 mean diff vs 0.26 for the lowest). The user spotted these visually before the numbers confirmed it.
+**Why it matters:** A 16-channel VAE can functionally specialize — some channels for faces, others for background/texture/structure. This is fundamentally different from SDXL's 4-channel VAE where everything is compressed. More channels = more separability = potentially viable channel-level identity manipulation.
+**Follow up:** Does channel-level identity swapping actually work on Z-Image? If channels 1+6+9+12 carry identity, swapping those 4 channels might transfer identity without the UNet healing problem (since the swap covers enough channels to be self-consistent).
+
+---
+
 ### 3. Ch 3 identity signal emerges BEFORE Ch 0 foundation
 **Found during:** Exp 3
 **What:** Ch 3 identity divergence begins at steps 7-9, slightly leading Ch 0. The fingerprint forms before the foundation fully resolves.
