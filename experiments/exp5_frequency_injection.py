@@ -97,6 +97,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 5: Naive Frequency Injection Test."""
     out_dir = get_output_dir("experiment_5", output_base)
@@ -106,7 +107,7 @@ def run(
     scorer = ArcFaceScorer()
 
     seeds = list(range(min(n_seeds, 20)))
-    n_steps = 50
+    n_steps = num_steps
     results_rows = []
 
     # Reference face

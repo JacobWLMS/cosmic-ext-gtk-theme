@@ -22,6 +22,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 7: PCA on Identity."""
     out_dir = get_output_dir("experiment_7", output_base)

@@ -49,6 +49,13 @@ def main():
         help="Base output directory (default: outputs)",
     )
 
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=20,
+        help="Number of denoising steps (default: 20)",
+    )
+
     args = parser.parse_args()
 
     n_seeds = 5 if args.quick else args.seeds
@@ -69,6 +76,7 @@ def main():
     print(f"Model: {args.model.upper()}")
     print(f"Seeds: {n_seeds}")
     print(f"Experiments: {args.experiment}")
+    print(f"Steps: {args.steps}")
     print(f"Save latents: {save_latents}")
     print(f"Output: {args.output_dir}")
     print("=" * 70)
@@ -87,6 +95,7 @@ def main():
                 n_seeds=n_seeds,
                 save_latents=save_latents,
                 output_base=args.output_dir,
+                num_steps=args.steps,
             )
             completed.append((exp_num, out_dir))
         except Exception as e:

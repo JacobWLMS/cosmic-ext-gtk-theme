@@ -35,6 +35,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 3: Step-by-Step Identity Emergence."""
     out_dir = get_output_dir("experiment_3", output_base)
@@ -44,7 +45,7 @@ def run(
     scorer = ArcFaceScorer()
 
     seeds = list(range(min(n_seeds, 20)))  # Cap at 20 for this experiment (many decode steps)
-    n_steps = 50
+    n_steps = num_steps
     results_rows = []
 
     # For each celebrity, generate images and track identity emergence

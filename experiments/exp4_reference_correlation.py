@@ -31,13 +31,14 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 4: Timestep-Matched Reference Correlation."""
     out_dir = get_output_dir("experiment_4", output_base)
     print(f"Experiment 4 output: {out_dir}")
 
     pipe = PipelineWrapper(model_type)
-    n_steps = 50
+    n_steps = num_steps
     check_steps = [10, 20, 30, 40]
     n_bands = 10
 

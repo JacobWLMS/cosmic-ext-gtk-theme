@@ -25,6 +25,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 6: Channel Importance Analysis."""
     out_dir = get_output_dir("experiment_6", output_base)
