@@ -49,8 +49,12 @@ class PipelineWrapper:
             variant="fp16",
             use_safetensors=True,
         )
-        self.pipe.enable_model_cpu_offload()
-        self.pipe.enable_vae_slicing()
+        if torch.cuda.is_available():
+            self.pipe.enable_model_cpu_offload()
+            self.pipe.enable_vae_slicing()
+        else:
+            self.pipe = self.pipe.to("cpu")
+            self.pipe.to(torch.float32)
         self.vae = self.pipe.vae
         self.vae_scale_factor = self.pipe.vae_scale_factor  # typically 8
         self.latent_channels = 4
@@ -63,7 +67,11 @@ class PipelineWrapper:
                 "Alpha-VLLM/Lumina-Image-2.0",
                 torch_dtype=torch.bfloat16,
             )
-            self.pipe.enable_model_cpu_offload()
+            if torch.cuda.is_available():
+                self.pipe.enable_model_cpu_offload()
+            else:
+                self.pipe = self.pipe.to("cpu")
+                self.pipe.to(torch.float32)
             self.vae = self.pipe.vae
             self.vae_scale_factor = self.pipe.vae_scale_factor
             self.latent_channels = 16
@@ -133,7 +141,8 @@ class PipelineWrapper:
 
         # Clean up
         del result, decoded
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         gc.collect()
 
         return {
@@ -163,7 +172,8 @@ class PipelineWrapper:
 
         result = latent.cpu().float().numpy()
         del img_tensor, latent_dist, latent
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         return result
 
     @torch.no_grad()
@@ -179,7 +189,8 @@ class PipelineWrapper:
         )[0]
         image = self.pipe.image_processor.postprocess(decoded, output_type="pil")[0]
         del latent, decoded
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         return image
 
     @torch.no_grad()
@@ -215,5 +226,6 @@ class PipelineWrapper:
         del self.vae
         self.pipe = None
         self.vae = None
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         gc.collect()
