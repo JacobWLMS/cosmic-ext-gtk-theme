@@ -1,9 +1,7 @@
-"""Experiment 5: Channel-Based Identity Transplant.
+"""Experiment 5: Channel-Based Identity Transplant with Re-Denoising.
 
-Question: Can we transplant identity by swapping Ch 3 between two latents during denoising?
-
-Optimized: generates source+target ONCE per seed, caches step latents,
-then performs all channel/step swaps from cache (no redundant generation).
+Swaps a channel between source and target latents at a specific denoising step,
+then CONTINUES denoising to produce a clean final image (not a garbled intermediate).
 """
 
 import gc
@@ -32,6 +30,68 @@ TARGET_PROMPTS = [
 ]
 
 
+def _generate_with_channel_swap(pipe, source_prompt, target_prompt, seed, channel, swap_step, num_steps):
+    """Generate target image but swap one channel from source at a specific step.
+
+    Uses a callback to inject the source channel during denoising, then
+    continues denoising normally — producing a clean final image.
+    """
+    import torch
+
+    # First generate source with step latent capture to get the source channel values
+    source_res = pipe.generate(
+        source_prompt, seed,
+        num_inference_steps=num_steps,
+        save_step_latents=True,
+        output_dir=None,
+    )
+    source_step_latents = source_res["step_latents"]
+    source_image = source_res["image"]
+
+    # Now generate target with a callback that swaps the channel at the right step
+    swap_done = {"done": False}
+
+    def swap_callback(pipe_obj, step_index, timestep, callback_kwargs):
+        if step_index == swap_step and not swap_done["done"]:
+            latents = callback_kwargs["latents"]
+            # Get the source latent at this same step
+            source_lat = torch.from_numpy(source_step_latents[step_index]).to(
+                device=latents.device, dtype=latents.dtype
+            )
+            # Swap the channel
+            latents[:, channel] = source_lat[:, channel]
+            callback_kwargs["latents"] = latents
+            swap_done["done"] = True
+        return callback_kwargs
+
+    negative_prompt = pipe.DEFAULT_NEGATIVE_PROMPT
+    generator = torch.Generator(device="cpu").manual_seed(seed)
+
+    kwargs = dict(
+        prompt=target_prompt,
+        negative_prompt=negative_prompt,
+        guidance_scale=7.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=num_steps,
+        generator=generator,
+        output_type="pil",
+        callback_on_step_end=swap_callback,
+        callback_on_step_end_tensor_inputs=["latents"],
+    )
+
+    result = pipe.pipe(**kwargs)
+    swapped_image = result.images[0]
+
+    del result
+    torch.cuda.empty_cache()
+
+    return {
+        "swapped_image": swapped_image,
+        "source_image": source_image,
+    }
+
+
 def run(
     model_type: str = "sdxl",
     n_seeds: int = 50,
@@ -39,7 +99,7 @@ def run(
     output_base: str = "outputs",
     num_steps: int = 20,
 ):
-    """Run Experiment 5: Channel-Based Identity Transplant."""
+    """Run Experiment 5: Channel-Based Identity Transplant with Re-Denoising."""
     import torch; torch.cuda.empty_cache(); gc.collect()
     out_dir = get_output_dir("experiment_5", output_base)
     print(f"Experiment 5 output: {out_dir}")
@@ -49,7 +109,7 @@ def run(
 
     seeds = list(range(min(n_seeds, 3)))
     channels_to_test = [0, 1, 2, 3]
-    swap_steps = [num_steps // 4, num_steps // 2]  # Early + mid only
+    swap_steps = [num_steps // 4, num_steps // 2]  # Early + mid
 
     results_rows = []
 
@@ -61,44 +121,34 @@ def run(
             print(f"\n  Target {target_idx}: {target_prompt[:60]}...")
 
             for seed in tqdm(seeds, desc=f"  Seeds"):
-                # === GENERATE ONCE, CACHE STEP LATENTS ===
-                source_res = pipe.generate(
-                    source_prompt, seed,
-                    num_inference_steps=num_steps,
-                    save_step_latents=True,
-                    output_dir=None,
-                )
-                target_res = pipe.generate(
-                    target_prompt, seed,
-                    num_inference_steps=num_steps,
-                    save_step_latents=True,
-                    output_dir=None,
-                )
+                # Generate clean unmodified versions for baseline
+                source_clean = pipe.generate(source_prompt, seed, num_inference_steps=num_steps, save_step_latents=False)
+                target_clean = pipe.generate(target_prompt, seed, num_inference_steps=num_steps, save_step_latents=False)
 
-                source_emb = scorer.get_embedding(source_res["image"])
-                target_emb = scorer.get_embedding(target_res["image"])
+                source_emb = scorer.get_embedding(source_clean["image"])
+                target_emb = scorer.get_embedding(target_clean["image"])
 
                 baseline_sim = None
                 if source_emb is not None and target_emb is not None:
                     baseline_sim = float(np.dot(source_emb, target_emb))
 
                 if seed == 0:
-                    source_res["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_source.png")
-                    target_res["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_target.png")
+                    source_clean["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_source.png")
+                    target_clean["image"].save(out_dir / "plots" / f"{source_name}_target{target_idx}_target.png")
 
-                # === SWAP FROM CACHE — no regeneration ===
+                del source_clean
+                gc.collect()
+
+                # Test each channel swap
                 for channel in channels_to_test:
                     for swap_step in swap_steps:
                         try:
-                            source_step_lat = source_res["step_latents"][swap_step]
-                            target_step_lat = target_res["step_latents"][swap_step]
+                            result = _generate_with_channel_swap(
+                                pipe, source_prompt, target_prompt,
+                                seed, channel, swap_step, num_steps,
+                            )
 
-                            swapped = target_step_lat.copy()
-                            swapped[0, channel] = source_step_lat[0, channel]
-
-                            swapped_image = pipe.decode_latent(swapped)
-
-                            swap_emb = scorer.get_embedding(swapped_image)
+                            swap_emb = scorer.get_embedding(result["swapped_image"])
                             arcface_to_source = None
                             arcface_to_target = None
                             if swap_emb is not None:
@@ -107,7 +157,7 @@ def run(
                                 if target_emb is not None:
                                     arcface_to_target = float(np.dot(target_emb, swap_emb))
 
-                            ssim_to_target = compute_ssim(target_res["image"], swapped_image)
+                            ssim_to_target = compute_ssim(target_clean["image"], result["swapped_image"])
 
                             results_rows.append({
                                 "source": source_name,
@@ -124,11 +174,14 @@ def run(
                             })
 
                             if seed == 0 and swap_step == num_steps // 2:
-                                swapped_image.save(
+                                result["swapped_image"].save(
                                     out_dir / "plots" / f"{source_name}_target{target_idx}_swap_ch{channel}_step{swap_step}.png"
                                 )
 
-                            del swapped_image, swapped
+                            del result
+                            gc.collect()
+                            torch.cuda.empty_cache()
+
                         except Exception as e:
                             print(f"    Error: ch{channel} step{swap_step}: {e}")
                             results_rows.append({
@@ -140,7 +193,7 @@ def run(
                                 "identity_transfer": None, "ssim_to_target": None,
                             })
 
-                del source_res, target_res
+                del target_clean
                 gc.collect()
                 torch.cuda.empty_cache()
 
@@ -153,7 +206,7 @@ def run(
         print("EXPERIMENT 5 RESULTS: Channel-Based Identity Transplant")
         print(f"{'='*60}")
 
-        print("\n--- Identity Transfer by Channel (ArcFace gain over baseline) ---")
+        print("\n--- Identity Transfer by Channel ---")
         for ch in sorted(df["channel"].unique()):
             ch_df = df[(df["channel"] == ch) & df["identity_transfer"].notna()]
             if not ch_df.empty:
@@ -175,7 +228,7 @@ def run(
         summary.columns = ["channel", "swap_step", "transfer_mean", "transfer_std", "ssim_mean", "arcface_mean"]
         summary.to_csv(out_dir / "summary.csv", index=False)
 
-        # Plot: identity transfer by channel
+        # Plots
         channels = sorted(df["channel"].unique())
         ch_means = [df[(df["channel"] == c) & df["identity_transfer"].notna()]["identity_transfer"].mean() for c in channels]
         ch_stds = [df[(df["channel"] == c) & df["identity_transfer"].notna()]["identity_transfer"].std() for c in channels]
@@ -190,7 +243,6 @@ def run(
             yerr_dict={"Identity Transfer (ArcFace gain)": np.array(ch_stds)},
         )
 
-        # Plot: transfer vs swap step for each channel
         step_data = {}
         for ch in channels:
             ch_df = df[(df["channel"] == ch) & df["identity_transfer"].notna()]
@@ -198,7 +250,7 @@ def run(
             means = [ch_df[ch_df["swap_step"] == s]["identity_transfer"].mean() for s in steps]
             step_data[f"Ch {ch}"] = np.array(means)
 
-        if step_data:
+        if step_data and steps:
             plot_line_chart(
                 np.array(steps),
                 step_data,
@@ -208,7 +260,6 @@ def run(
                 title=f"Identity Transfer vs Swap Timing ({model_type.upper()})",
             )
 
-        # Plot: identity transfer vs scene preservation tradeoff
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(figsize=(10, 7))
         for ch in channels:
