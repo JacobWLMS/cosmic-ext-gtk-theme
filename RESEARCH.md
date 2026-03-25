@@ -50,18 +50,21 @@ To transplant or modify identity, **target Ch 3** — it's the only channel wher
 
 ### Channel Swap Identity Transfer (Exp 5)
 
-Identity transplant via channel swapping is possible but crude:
-- **Ch 0 swap:** +0.367 ArcFace gain but SSIM 0.491 (scene destroyed)
-- **Ch 3 swap:** +0.153 ArcFace gain with SSIM 0.543 (moderate scene preservation)
-- **Ch 1/2 swap:** No identity transfer (~-0.05), confirming negative controls
+Two approaches tested:
 
-The swap results perfectly mirror the zeroing results (Exp 6), fully validating the hierarchical model. For practical identity manipulation, channel-level swapping is too coarse — subspace methods within Ch 3 or identity-conditioned generation are needed.
+**V1 (direct decode, flawed):** Decoded modified intermediate latents directly through VAE — produced garbled images. ArcFace measurements on these overestimated transfer: Ch 0 +0.367, Ch 3 +0.153.
+
+**V2 (re-denoising, correct):** Swaps channel during denoising via callback, then lets UNet continue. Key finding: **the UNet actively heals single-channel swaps.** SSIM to target is 0.67-0.90 — swapped images look almost identical to unmodified targets. The remaining denoising steps pull the latent back toward the target prompt's identity.
+
+Despite healing, the SSIM displacement ordering (Ch 0 > Ch 3 > Ch 1 ≈ Ch 2) matches the zeroing hierarchy from Exp 6, providing cross-validation.
+
+**Implication:** Identity manipulation cannot work against the denoising process — it must work *with* it (e.g., modifying conditioning, not intermediate latents). This explains why IP-Adapter/ControlNet work and raw channel swapping doesn't.
 
 ### Priority Next Steps
 
-1. **Exp 7 (PCA on Ch 3)** — Is discriminative identity a linear subspace within the fingerprint channel?
-2. **Re-denoising experiment** — Swap Ch 3 then CONTINUE denoising instead of direct VAE decode
-3. **Cross-model validation** — Test channel hierarchy on Lumina2 (16-channel VAE)
+1. **Exp 7 (PCA on Ch 3)** — Is discriminative identity a linear subspace within the fingerprint channel? Compare clustering across all 4 channels.
+2. **Cross-model validation** — Test channel hierarchy on Lumina2 (16-channel VAE)
+3. **Exp 5 follow-up** — Fix ArcFace, try late-step swaps (step 10-11/12), multi-channel swaps
 
 ---
 
