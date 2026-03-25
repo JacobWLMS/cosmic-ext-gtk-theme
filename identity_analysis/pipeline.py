@@ -15,13 +15,14 @@ warnings.filterwarnings("ignore", message=".*upcast_vae.*")
 warnings.filterwarnings("ignore", message=".*local_dir_use_symlinks.*")
 
 
-def _latent_dump_callback(latent_dir: Path, step_latents: list):
-    """Create a callback that dumps latents at every denoising step."""
+def _latent_dump_callback(latent_dir, step_latents: list):
+    """Create a callback that captures latents at every denoising step."""
     def callback(pipe, step_index, timestep, callback_kwargs):
         latents = callback_kwargs["latents"]
         latent_np = latents.cpu().float().numpy()
         step_latents.append(latent_np.copy())
-        np.save(latent_dir / f"step_{step_index:04d}.npy", latent_np)
+        if latent_dir is not None:
+            np.save(latent_dir / f"step_{step_index:04d}.npy", latent_np)
         return callback_kwargs
     return callback
 
@@ -120,9 +121,10 @@ class PipelineWrapper:
         latent_dir = None
         callback_fn = None
 
-        if save_step_latents and output_dir is not None:
-            latent_dir = Path(output_dir) / "latents"
-            latent_dir.mkdir(parents=True, exist_ok=True)
+        if save_step_latents:
+            if output_dir is not None:
+                latent_dir = Path(output_dir) / "latents"
+                latent_dir.mkdir(parents=True, exist_ok=True)
             callback_fn = _latent_dump_callback(latent_dir, step_latents)
 
         # Use a callback to capture the final latent before VAE decode
