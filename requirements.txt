@@ -1,0 +1,16 @@
+torch>=2.1.0
+diffusers>=0.28.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+numpy>=1.24.0
+scipy>=1.11.0
+matplotlib>=3.8.0
+scikit-image>=0.22.0
+insightface>=0.7.3
+onnxruntime>=1.16.0
+opencv-python-headless>=4.8.0
+open-clip-torch>=2.24.0
+tqdm>=4.66.0
+pandas>=2.1.0
+Pillow>=10.0.0
