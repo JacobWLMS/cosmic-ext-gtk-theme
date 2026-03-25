@@ -19,13 +19,13 @@ Z-Image Turbo has been selected as our primary architecture (Cycle 10 decision).
 
 ## Architecture: Single Notebook, Independent Sections
 
-One notebook with shared model loading at the top. Each experiment section is self-contained: it saves its own JSON results + visuals after completion. Sections can be re-run independently after the model is loaded.
+One notebook with shared model loading at the top. Each experiment section is self-contained: it saves its own JSON results + visuals after completion. Ordered shortest-first, with Section 2 after Section 3 because the channel swap reuses step-captured latents from the emergence analysis.
 
 ```
 Section 0: Setup & Model Load          (~3 min)
-Section 1: Qwen3 Conditioning Analysis (~15-20 min)
-Section 2: Multi-Channel Face Swap     (~30-40 min, heavy generation)
-Section 3: Identity Emergence Timing   (~20-30 min)
+Section 1: Qwen3 Conditioning Analysis (~10-15 min, mostly text encoder, minimal generation)
+Section 2: Identity Emergence Timing   (~20-30 min, captures per-step latents)
+Section 3: Multi-Channel Face Swap     (~40-60 min, reuses Section 2 latents as swap donors)
 Section 4: Summary Dashboard           (~1 min)
 ```
 
@@ -139,7 +139,9 @@ Templates (varied scene/context, same identity):
 }
 ```
 
-## Section 2: Multi-Channel Face Swap
+## Section 3: Multi-Channel Face Swap
+
+**Data reuse:** This section uses the same identity pairs and seeds as Section 2 (Emergence). The step-5 captured latents from Section 2 are reused as swap donors, avoiding redundant generation.
 
 ### Question
 Can swapping face-dedicated channels (1, 6, 9, 12) simultaneously transfer identity, overwhelming the DiT's healing?
@@ -216,7 +218,7 @@ This requires first generating the source image with step capture (Section 3's c
 }
 ```
 
-## Section 3: Identity Emergence Timing
+## Section 2: Identity Emergence Timing
 
 ### Question
 At which of Z-Image's 9 flow-matching steps does identity information lock in?
@@ -227,7 +229,7 @@ At which of Z-Image's 9 flow-matching steps does identity information lock in?
 
 ### Method
 
-**Pairs:** 3 identity pairs, 5 seeds each. Same pairs as Section 2 for consistency.
+**Pairs:** 3 identity pairs, 5 seeds each (same pairs used in Section 3's channel swap — latents captured here are reused there).
 
 **Capture:** Use `callback_on_step_end` to save latent at every step (1-9).
 
