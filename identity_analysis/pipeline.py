@@ -2,6 +2,7 @@
 
 import os
 import gc
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -9,6 +10,9 @@ import numpy as np
 import torch
 from PIL import Image
 from tqdm import tqdm
+
+warnings.filterwarnings("ignore", message=".*upcast_vae.*")
+warnings.filterwarnings("ignore", message=".*local_dir_use_symlinks.*")
 
 
 def _latent_dump_callback(latent_dir: Path, step_latents: list):
@@ -41,16 +45,25 @@ class PipelineWrapper:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
     def _load_sdxl(self):
-        from diffusers import StableDiffusionXLPipeline
+        from diffusers import AutoencoderKL, StableDiffusionXLPipeline
 
+        # Clear any stale VRAM before loading
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # Use the fp16-fixed VAE to avoid numerical instability and float32 upcast
+        vae = AutoencoderKL.from_pretrained(
+            "madebyollin/sdxl-vae-fp16-fix",
+            torch_dtype=torch.float16,
+        )
         self.pipe = StableDiffusionXLPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-base-1.0",
+            vae=vae,
             torch_dtype=torch.float16,
             variant="fp16",
             use_safetensors=True,
         )
-        self.pipe.enable_model_cpu_offload()
-        self.pipe.enable_vae_slicing()
+        self.pipe.to("cuda")
         self.vae = self.pipe.vae
         self.vae_scale_factor = self.pipe.vae_scale_factor  # typically 8
         self.latent_channels = 4
@@ -78,7 +91,7 @@ class PipelineWrapper:
         self,
         prompt: str,
         seed: int,
-        num_inference_steps: int = 50,
+        num_inference_steps: int = 20,
         output_dir: Optional[Path] = None,
         save_step_latents: bool = True,
         height: int = 512,
@@ -99,42 +112,33 @@ class PipelineWrapper:
             latent_dir.mkdir(parents=True, exist_ok=True)
             callback_fn = _latent_dump_callback(latent_dir, step_latents)
 
+        # Use a callback to capture the final latent before VAE decode
+        final_latent_holder = {}
+
+        def capture_final_latent(pipe, step_index, timestep, callback_kwargs):
+            # Always capture the latest latent (last call = final step)
+            final_latent_holder["latent"] = callback_kwargs["latents"].cpu().float().clone()
+            if callback_fn is not None:
+                callback_kwargs = callback_fn(pipe, step_index, timestep, callback_kwargs)
+            return callback_kwargs
+
         kwargs = dict(
             prompt=prompt,
             height=height,
             width=width,
             num_inference_steps=num_inference_steps,
             generator=generator,
-            output_type="latent",
+            output_type="pil",
+            callback_on_step_end=capture_final_latent,
+            callback_on_step_end_tensor_inputs=["latents"],
         )
 
-        if callback_fn is not None:
-            kwargs["callback_on_step_end"] = callback_fn
-            kwargs["callback_on_step_end_tensor_inputs"] = ["latents"]
-
         result = self.pipe(**kwargs)
-        final_latent = result.images  # in latent output mode, this is the latent
+        image = result.images[0]
+        final_latent_np = final_latent_holder["latent"].numpy()
 
-        # Decode the final latent to get the image
-        if self.model_type == "sdxl":
-            decoded = self.vae.decode(
-                final_latent / self.vae.config.scaling_factor,
-                return_dict=False,
-            )[0]
-        else:
-            decoded = self.vae.decode(
-                final_latent / self.vae.config.scaling_factor,
-                return_dict=False,
-            )[0]
-
-        image = self.pipe.image_processor.postprocess(decoded, output_type="pil")[0]
-
-        final_latent_np = final_latent.cpu().float().numpy()
-
-        # Clean up
-        del result, decoded
+        del result
         torch.cuda.empty_cache()
-        gc.collect()
 
         return {
             "image": image,

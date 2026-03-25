@@ -28,6 +28,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 2: Within-Identity Latent Invariance."""
     out_dir = get_output_dir("experiment_2", output_base)

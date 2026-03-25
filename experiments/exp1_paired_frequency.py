@@ -28,6 +28,7 @@ def run(
     n_seeds: int = 50,
     save_latents: bool = True,
     output_base: str = "outputs",
+    num_steps: int = 20,
 ):
     """Run Experiment 1: Paired Latent Frequency Analysis."""
     out_dir = get_output_dir("experiment_1", output_base)
@@ -43,11 +44,15 @@ def run(
     results_rows = []
 
     for pair_idx, (prompt_a, prompt_b) in enumerate(prompt_pairs):
-        print(f"\nPrompt pair {pair_idx + 1}/{len(prompt_pairs)}:")
-        print(f"  A: {prompt_a[:60]}...")
-        print(f"  B: {prompt_b[:60]}...")
+        print(f"\n{'─' * 60}")
+        print(f"Pair {pair_idx + 1}/{len(prompt_pairs)}:")
+        print(f"  A: {prompt_a}")
+        print(f"  B: {prompt_b}")
 
-        for seed in tqdm(seeds, desc=f"  Seeds (pair {pair_idx + 1})"):
+        pair_diff_mags = []
+        pair_raw_diffs = []
+
+        for seed in tqdm(seeds, desc=f"  Generating"):
             # Generate paired images
             res_a = pipe.generate(
                 prompt_a, seed,
@@ -67,6 +72,8 @@ def run(
             diff = lat_a - lat_b
             diff_mag, diff_phase = fft_2d_per_channel(diff)
             all_diff_magnitudes.append(diff_mag)
+            pair_diff_mags.append(diff_mag)
+            pair_raw_diffs.append(np.mean(np.abs(diff[0]), axis=(1, 2)))
 
             # Frequency band energy
             energy_a = compute_frequency_band_energy(lat_a)
@@ -104,6 +111,17 @@ def run(
             del res_a, res_b, lat_a, lat_b, diff
             gc.collect()
 
+        # Print per-pair results
+        pair_mean_mag = np.mean(pair_diff_mags, axis=0)  # [C, H, W]
+        pair_mean_raw = np.mean(pair_raw_diffs, axis=0)  # [C]
+        n_ch = pair_mean_mag.shape[0]
+        print(f"\n  Results for pair {pair_idx + 1}:")
+        print(f"  {'Ch':<5} {'Freq Mag':<12} {'Raw Diff':<12}")
+        for c in range(n_ch):
+            print(f"  {c:<5} {np.mean(pair_mean_mag[c]):<12.2f} {pair_mean_raw[c]:<12.4f}")
+        top_ch = np.argmax([np.mean(pair_mean_mag[c]) for c in range(n_ch)])
+        print(f"  → Most active channel: Ch {top_ch}")
+
     # Aggregate results
     all_diff_magnitudes = np.array(all_diff_magnitudes)
     mean_diff_mag = np.mean(all_diff_magnitudes, axis=0)
@@ -137,14 +155,40 @@ def run(
             "max_diff_magnitude": float(np.max(mean_diff_mag[c])),
         })
 
-    # Save CSV
+    # Print key results
+    print(f"\n{'=' * 60}")
+    print(f"EXPERIMENT 1 RESULTS: Paired Latent Frequency Analysis")
+    print(f"{'=' * 60}")
+    print(f"Model: {model_type.upper()} | Seeds: {n_seeds} | Prompt pairs: {len(prompt_pairs)}")
+    print(f"\nPer-Channel Identity Difference (frequency domain):")
+    print(f"  {'Channel':<10} {'Mean Mag':<15} {'Max Mag':<15} {'Raw Diff':<15}")
+    print(f"  {'-'*55}")
+
     df = pd.DataFrame(results_rows)
+    for c in range(n_channels):
+        ch_df = df[df["channel"] == c]
+        print(f"  Ch {c:<6} {ch_df['diff_magnitude_mean'].mean():<15.2f} "
+              f"{ch_df['diff_magnitude_max'].max():<15.2f} "
+              f"{ch_df['raw_diff_mean'].mean():<15.4f}")
+
+    ranked = sorted(channel_summary, key=lambda x: x["mean_diff_magnitude"], reverse=True)
+    print(f"\n  Most identity-sensitive channel: Ch {ranked[0]['channel']} "
+          f"(mean mag: {ranked[0]['mean_diff_magnitude']:.2f})")
+    print(f"  Least identity-sensitive channel: Ch {ranked[-1]['channel']} "
+          f"(mean mag: {ranked[-1]['mean_diff_magnitude']:.2f})")
+
+    # Frequency band analysis
+    energy_diff = np.abs(mean_energy_a - mean_energy_b)
+    band_diff_total = energy_diff.sum(axis=0)  # sum across channels per band
+    top_band = np.argmax(band_diff_total)
+    print(f"\n  Frequency band with largest identity difference: Band {top_band}/9 "
+          f"({'low' if top_band < 3 else 'mid' if top_band < 7 else 'high'} frequency)")
+
+    print(f"\nPlots saved to: {out_dir / 'plots'}")
+    print(f"{'=' * 60}")
+
     df.to_csv(out_dir / "results.csv", index=False)
+    pd.DataFrame(channel_summary).to_csv(out_dir / "channel_summary.csv", index=False)
 
-    pd.DataFrame(channel_summary).to_csv(
-        out_dir / "channel_summary.csv", index=False
-    )
-
-    print(f"\nExperiment 1 complete. Results saved to {out_dir}")
     pipe.cleanup()
     return out_dir

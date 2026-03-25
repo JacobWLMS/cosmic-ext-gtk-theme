@@ -103,29 +103,61 @@ def get_prompt_pairs() -> list[tuple[str, str]]:
     Each pair has the same scene but different identity subjects.
     """
     return [
+        # Same gender, different identity (isolate identity from gender)
         (
-            "portrait photo of a young woman in a cafe, natural lighting",
+            "portrait photo of a young man in a cafe, natural lighting",
             "portrait photo of an old man in a cafe, natural lighting",
         ),
         (
-            "photo of a blonde woman standing in a park",
-            "photo of a dark-haired man standing in a park",
+            "portrait photo of a young woman in a park, natural lighting",
+            "portrait photo of an old woman in a park, natural lighting",
+        ),
+        # Cross-gender, same scene
+        (
+            "close-up portrait of a man in a studio, soft lighting",
+            "close-up portrait of a woman in a studio, soft lighting",
+        ),
+        # Same identity description, different scene (control: identity constant, scene varies)
+        (
+            "photo of a middle-aged man at a desk, office background",
+            "photo of a middle-aged man at the beach, sunset lighting",
+        ),
+        # Different ethnicity cues, same framing
+        (
+            "headshot of an Asian man, plain white background",
+            "headshot of a European man, plain white background",
         ),
         (
-            "close-up portrait of a middle-aged man in a studio, soft lighting",
-            "close-up portrait of a young woman in a studio, soft lighting",
+            "headshot of an African woman, plain white background",
+            "headshot of a European woman, plain white background",
+        ),
+        # Different ages, same gender, varied settings
+        (
+            "photo of a teenage boy standing on a street, urban, golden hour",
+            "photo of an elderly man standing on a street, urban, golden hour",
         ),
         (
-            "photo of a woman with short hair sitting at a desk, office background",
-            "photo of an elderly man with glasses sitting at a desk, office background",
+            "photo of a young woman sitting in a library, warm lighting",
+            "photo of an elderly woman sitting in a library, warm lighting",
+        ),
+        # Full body vs portrait (composition variety)
+        (
+            "full body photo of a tall man in a suit, city sidewalk",
+            "full body photo of a short man in a suit, city sidewalk",
+        ),
+        # Minimal prompt, maximum identity difference
+        (
+            "photo of a man",
+            "photo of a woman",
         ),
         (
-            "headshot of a man with a beard, plain white background",
-            "headshot of a woman with long hair, plain white background",
+            "photo of a child",
+            "photo of an old person",
         ),
+        # Same scene, subtle identity shift
         (
-            "portrait of a teenager, urban street background, golden hour",
-            "portrait of an old woman, urban street background, golden hour",
+            "portrait of a man with short brown hair, neutral expression, grey background",
+            "portrait of a man with long blond hair, neutral expression, grey background",
         ),
     ]
 
