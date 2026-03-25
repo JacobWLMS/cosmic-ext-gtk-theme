@@ -1,0 +1,18 @@
+{
+  "experiment": 2,
+  "name": "Within-Identity Invariance",
+  "date": "2026-03-25",
+  "model": "sdxl",
+  "resolution": "1024x1024",
+  "steps": 12,
+  "n_seeds": 5,
+  "gpu": "T4",
+  "discrimination_ratios": {
+    "ch0": {"within_variance": 0.7256, "across_variance": 0.0159, "ratio": 0.0219},
+    "ch1": {"within_variance": 0.4202, "across_variance": 0.0178, "ratio": 0.0423},
+    "ch2": {"within_variance": 0.5820, "across_variance": 0.0199, "ratio": 0.0343},
+    "ch3": {"within_variance": 0.4544, "across_variance": 0.0211, "ratio": 0.0463}
+  },
+  "ranking": ["ch3", "ch1", "ch2", "ch0"],
+  "key_finding": "Ch 3 has highest discrimination ratio (0.046) — best identity discriminator. Ch 0 lowest (0.022) — identity inseparable from scene."
+}

@@ -1,0 +1,17 @@
+{
+  "experiment": 1,
+  "name": "Paired Frequency Analysis",
+  "date": "2026-03-25",
+  "model": "sdxl",
+  "resolution": "1024x1024",
+  "steps": 12,
+  "n_seeds": 50,
+  "gpu": "T4",
+  "channel_summary": {
+    "ch0": {"mean_diff_magnitude": 43.374, "max_diff_magnitude": 1880.042},
+    "ch1": {"mean_diff_magnitude": 35.994, "max_diff_magnitude": 1609.698},
+    "ch2": {"mean_diff_magnitude": 44.825, "max_diff_magnitude": 1745.416},
+    "ch3": {"mean_diff_magnitude": 37.606, "max_diff_magnitude": 2186.504}
+  },
+  "key_finding": "Ch 2 showed largest mean frequency shift on identity change, Ch 3 largest max. Later revised by Exp 6 — frequency sensitivity does not equal identity importance."
+}

@@ -1,0 +1,40 @@
+{
+  "experiment": 5,
+  "name": "Channel-Based Identity Transplant",
+  "date": "2026-03-25",
+  "model": "sdxl",
+  "resolution": "1024x1024",
+  "steps": 12,
+  "gpu": "L4",
+  "v1_direct_decode": {
+    "n_seeds": 3,
+    "method": "Decode modified intermediate latent directly through VAE (flawed)",
+    "results": {
+      "ch0": {"identity_transfer": 0.367, "ssim": 0.491},
+      "ch1": {"identity_transfer": -0.052, "ssim": 0.626},
+      "ch2": {"identity_transfer": -0.059, "ssim": 0.613},
+      "ch3": {"identity_transfer": 0.153, "ssim": 0.543}
+    }
+  },
+  "v2_redenoising": {
+    "n_seeds": 1,
+    "method": "Callback injection: swap channel at step N, let UNet continue denoising",
+    "sources": ["Brad Pitt", "Morgan Freeman"],
+    "targets": 3,
+    "swap_steps": [3, 6],
+    "arcface_status": "ALL NaN — source embeddings failed",
+    "mean_ssim_to_target_step6": {
+      "ch0": 0.67,
+      "ch1": 0.86,
+      "ch2": 0.88,
+      "ch3": 0.72
+    },
+    "mean_ssim_to_target_step3": {
+      "ch0": 0.71,
+      "ch1": 0.87,
+      "ch2": 0.90,
+      "ch3": 0.77
+    }
+  },
+  "key_finding": "UNet heals single-channel swaps. V2 SSIM 0.67-0.90 to target — swapped images nearly identical to unmodified. Channel displacement ordering (Ch0>Ch3>Ch1≈Ch2) matches zeroing results."
+}
