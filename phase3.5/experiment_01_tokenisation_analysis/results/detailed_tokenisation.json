@@ -1,0 +1,176 @@
+[
+  {
+    "celebrity": "Brad Pitt",
+    "score": 0.9271517872810364,
+    "matched": [
+      6,
+      7
+    ],
+    "all_name": [
+      6,
+      7
+    ],
+    "missed": [],
+    "n_matched": 2,
+    "n_total_name": 2
+  },
+  {
+    "celebrity": "Will Smith",
+    "score": 0.9160806894302368,
+    "matched": [
+      6,
+      7
+    ],
+    "all_name": [
+      6,
+      7
+    ],
+    "missed": [],
+    "n_matched": 2,
+    "n_total_name": 2
+  },
+  {
+    "celebrity": "Morgan Freeman",
+    "score": 0.9132721662521364,
+    "matched": [
+      6,
+      7
+    ],
+    "all_name": [
+      6,
+      7
+    ],
+    "missed": [],
+    "n_matched": 2,
+    "n_total_name": 2
+  },
+  {
+    "celebrity": "Tom Cruise",
+    "score": 0.8677179932594299,
+    "matched": [
+      6,
+      7
+    ],
+    "all_name": [
+      6,
+      7
+    ],
+    "missed": [],
+    "n_matched": 2,
+    "n_total_name": 2
+  },
+  {
+    "celebrity": "Leonardo DiCaprio",
+    "score": 0.7801754117012024,
+    "matched": [
+      6
+    ],
+    "all_name": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "missed": [
+      7,
+      8,
+      9
+    ],
+    "n_matched": 1,
+    "n_total_name": 4
+  },
+  {
+    "celebrity": "Denzel Washington",
+    "score": 0.4627122461795807,
+    "matched": [
+      8
+    ],
+    "all_name": [
+      6,
+      7,
+      8
+    ],
+    "missed": [
+      6,
+      7
+    ],
+    "n_matched": 1,
+    "n_total_name": 3
+  },
+  {
+    "celebrity": "Keanu Reeves",
+    "score": 0.340920627117157,
+    "matched": [
+      9
+    ],
+    "all_name": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "missed": [
+      6,
+      7,
+      8
+    ],
+    "n_matched": 1,
+    "n_total_name": 4
+  },
+  {
+    "celebrity": "Robert Downey Jr",
+    "score": 0.2622163951396942,
+    "matched": [
+      6,
+      9
+    ],
+    "all_name": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "missed": [
+      7,
+      8
+    ],
+    "n_matched": 2,
+    "n_total_name": 4
+  },
+  {
+    "celebrity": "Johnny Depp",
+    "score": 0.1094005942344665,
+    "matched": [
+      6
+    ],
+    "all_name": [
+      6,
+      7,
+      8
+    ],
+    "missed": [
+      7,
+      8
+    ],
+    "n_matched": 1,
+    "n_total_name": 3
+  },
+  {
+    "celebrity": "Tom Hanks",
+    "score": 0.0521452916786074,
+    "matched": [
+      6
+    ],
+    "all_name": [
+      6,
+      7,
+      8
+    ],
+    "missed": [
+      7,
+      8
+    ],
+    "n_matched": 1,
+    "n_total_name": 3
+  }
+]

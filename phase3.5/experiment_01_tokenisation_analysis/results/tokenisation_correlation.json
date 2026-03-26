@@ -1,0 +1,32 @@
+{
+  "pearson_r": 0.6350953323420672,
+  "pearson_p": 0.048498645497535256,
+  "spearman_rho": 0.6614950926316517,
+  "spearman_p": 0.037241305989306604,
+  "mann_whitney_u": 3.0,
+  "mann_whitney_p": 0.05555555555555555,
+  "group_1_token": {
+    "mean": 0.34907083418220275,
+    "std": 0.26246468519077226,
+    "n": 5,
+    "celebs": [
+      "Leonardo DiCaprio",
+      "Denzel Washington",
+      "Keanu Reeves",
+      "Johnny Depp",
+      "Tom Hanks"
+    ]
+  },
+  "group_2_token": {
+    "mean": 0.7772878062725067,
+    "std": 0.25833722173270596,
+    "n": 5,
+    "celebs": [
+      "Brad Pitt",
+      "Will Smith",
+      "Morgan Freeman",
+      "Tom Cruise",
+      "Robert Downey Jr"
+    ]
+  }
+}

@@ -1,10 +1,10 @@
 # Serendipity Log -- Phase 3
 
-## 1. Bimodal Identity Encoding in Qwen3 (Exp 4, 2026-03-26)
+## 1. ~~Bimodal Identity Encoding in Qwen3~~ RETRACTED (Exp 4, 2026-03-26)
 
-**The most important finding of Phase 3, and it was not predicted.**
+**RETRACTED in Phase 3.5.** The apparent bimodality was a tokenisation artefact -- `find_name_token_positions` missed subword-split name tokens. See phase3.5/experiment_01_tokenisation_analysis/README.md for full analysis.
 
-Qwen3-4B does not have a single strategy for encoding celebrity identity in its text representations. When only name-token embeddings are injected into a generic prompt, ArcFace scores split into two distinct populations:
+Original observation (now explained): When only name-token embeddings are injected into a generic prompt, ArcFace scores split into two distinct populations:
 
 **Name-concentrated group** (identity fully recoverable from name tokens alone):
 - Brad Pitt: 0.927

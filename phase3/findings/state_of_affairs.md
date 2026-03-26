@@ -40,9 +40,11 @@ high_identity_only beats all_positions, confirming the suffix positions carry co
 
 Exp 3 Part B: Open-set triangulation (random faces against celebrity DB) scored 0.236 mean. Simu Liu was nearest neighbour for 7/10 random faces -- the 99-celebrity DB is too sparse and the generic prompts mode-collapsed.
 
-### 4. Identity Encoding is Celebrity-Specific (Bimodal)
+### 4. ~~Identity Encoding is Celebrity-Specific (Bimodal)~~ RETRACTED
 
-**This is the most novel finding.** Exp 4 Part B showed that injecting only name token embeddings into a generic prompt produces ArcFace scores that split into two populations:
+**RETRACTED in Phase 3.5.** The bimodal split was caused by a tokenisation bug in `find_name_token_positions` -- see phase3.5/ for full analysis. Identity encoding is consistent across celebrities; the matching function missed subword-split name tokens. Original observation preserved below for context.
+
+~~**This is the most novel finding.**~~ Exp 4 Part B showed that injecting only name token embeddings into a generic prompt produces ArcFace scores that split into two populations:
 
 **Name-token-concentrated celebrities** (identity lives in name tokens):
 - Brad Pitt: 0.927
