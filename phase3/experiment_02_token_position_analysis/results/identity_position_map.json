@@ -1,0 +1,25 @@
+{
+  "high_identity": [
+    7,
+    14,
+    17
+  ],
+  "low_identity": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "name_positions": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13
+  ],
+  "min_seq_len": 18,
+  "threshold_high": 0.2,
+  "threshold_low": 0.05
+}

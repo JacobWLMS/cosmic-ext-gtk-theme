@@ -21,3 +21,5 @@ insightface_models/
 .mcp.json
 .runpod/
 flash_worker.py
+phase3/shared/celebrity_db.pkl
+phase3/shared/celebrity_db.pkl.gz

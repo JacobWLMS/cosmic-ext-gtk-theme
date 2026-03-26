@@ -1,0 +1,11 @@
+target,scene,mean_arcface,nearest_celeb
+Brad Pitt,photo of a person walking on a beach at sunset,0.12359372278054555,Harry Styles
+Brad Pitt,"portrait of a person in a library, reading a book",0.11229294538497925,Harry Styles
+Brad Pitt,photo of a person cooking in a kitchen,0.22720896204312643,Harry Styles
+Tom Hanks,photo of a person walking on a beach at sunset,0.0409431674828132,Anthony Hopkins
+Tom Hanks,"portrait of a person in a library, reading a book",0.19289922217528024,Anthony Hopkins
+Tom Hanks,photo of a person cooking in a kitchen,0.23872940242290497,Anthony Hopkins
+Denzel Washington,photo of a person walking on a beach at sunset,-0.0959182009100914,Dave Chappelle
+Denzel Washington,"portrait of a person in a library, reading a book",0.2854658166567485,Dave Chappelle
+Denzel Washington,photo of a person cooking in a kitchen,0.2729052354892095,Dave Chappelle
+
