@@ -177,6 +177,29 @@ Next directions:
 
 ---
 
+## Cycle 14: Token Embedding Swap
+**Date:** 2026-03-26 | **GPU:** L4 (RunPod, via research-lab) | **Status:** COMPLETE
+
+**Question:** Can we transfer identity by surgically replacing name-token embeddings in Qwen3's hidden states?
+
+**Results:**
+- Same-gender swap (Brad→Morgan): **0.94 SSIM to target** — nearly perfect identity replacement
+- Cross-gender (Taylor→Keanu): 0.70 — produces hybrid, Asian male with Keanu features
+- Cross-gender (Morgan→Scarlett): 0.56 — mostly Scarlett, slight Morgan influence
+- Scaling (0.5x-2.0x): NO effect — identity is directional, not magnitude-based
+- Zeroed/random name tokens: produces **default identity (Asian male)** from DiT's prior
+
+**Surprises:**
+1. Identity is binary (direction), not continuous (magnitude). Scaling doesn't work.
+2. The model has a built-in default face (Asian male) that emerges when identity signal is removed — comes from DiT weights, not text encoder.
+3. Cross-gender swaps fail partially because non-name tokens carry gendered context.
+
+**Decision:** → The default identity mechanism is the most interesting lead. Where exactly in the DiT does it come from? If we can intercept it, we may be able to control identity at the denoiser level. Also: try SLERP interpolation (direction-based) instead of linear scaling, and full subject phrase swap for cross-gender.
+
+See research/FINDINGS_TOKEN_SWAP.md for full analysis.
+
+---
+
 ## Cycle 10: Architecture Decision — Z-Image Turbo as Primary
 **Date:** 2026-03-25 | **Status:** Decision cycle (no experiment)
 
