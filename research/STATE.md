@@ -38,7 +38,8 @@ Note: Discrimination ratios don't perfectly align with sensitivity tiers — Ch 
 | Space | Identity Clustering | Method | Architecture |
 |-------|-------------------|--------|-------------|
 | CLIP mean-pooled embeddings | **+0.403** (strong) | PCA 5d | SDXL |
-| Z-Image conditioning (Qwen3) | **Unknown** | Not yet tested | Z-Image |
+| Qwen3 name-token embeddings | **+0.792** (very strong) | PCA 5d, layer -6 | Z-Image |
+| Qwen3 mean-pooled embeddings | +0.024 (none) | PCA 10d | Z-Image |
 | SDXL VAE latent (best) | -0.079 (anti-cluster) | PCA 20d | SDXL |
 | Z-Image VAE latent (best) | -0.137 (anti-cluster) | PCA 10d | Z-Image |
 
@@ -49,8 +50,14 @@ Note: Discrimination ratios don't perfectly align with sensitivity tiers — Ch 
 - **HIGH confidence:** More VAE channels = more functional specialization, but NOT more identity separability
 - **HIGH confidence:** Channel-level sensitivity and discrimination are real but don't enable linear isolation
 - **MEDIUM confidence:** Denoiser (UNet or DiT) "heals" single-channel perturbations — confirmed for UNet, predicted for DiT
-- **LOW confidence:** Z-Image's conditioning space (Qwen3 LLM) will also show identity separability — needs testing. Qwen3 is a decoder-only LLM, fundamentally different from CLIP's contrastive encoder
-- **LOW confidence:** Multi-channel swap (face channels 1+6+9+12 together) might overwhelm DiT healing — untested hypothesis
+- **HIGH confidence:** Identity in Qwen3 is hyperlocalized in name tokens (+0.792 silhouette) — 2x stronger than CLIP's distributed representation
+- **HIGH confidence:** Identity is directional, not magnitude-based — scaling embeddings has zero effect, SLERP produces smooth blending
+- **HIGH confidence:** Token swap transfers identity for same-gender pairs (0.94 SSIM to target)
+- **MEDIUM confidence:** SLERP interpolation enables continuous identity control — tested on Brad/Morgan, 75% produces genuine hybrid
+- **MEDIUM confidence:** Cross-gender token swap is impaired by gendered context in non-name tokens
+- **MEDIUM confidence:** Default identity (zeroed name tokens) is contextual — Asian male for portrait, changes with prompt context
+- **LOW confidence:** Name-token manipulation generalizes beyond faces — weak results on art styles, no effect on dog breeds
+- **LOW confidence:** Layer-targeted SLERP could isolate face-only blending from clothing/scene — untested
 
 ## Evidence Map
 

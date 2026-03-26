@@ -1,0 +1,18 @@
+{
+  "step_name": "slerp_interpolation",
+  "run_number": 1,
+  "status": "completed",
+  "started_at": "2026-03-26T01:18:20.043506Z",
+  "completed_at": "2026-03-26T01:20:23.274688Z",
+  "execution_time_s": 123.231,
+  "stdout": "SLERP alpha=0.00 done\nSLERP alpha=0.25 done\nSLERP alpha=0.50 done\nSLERP alpha=0.75 done\nSLERP alpha=1.00 done\nSLERP done.\n",
+  "stderr": "",
+  "error": null,
+  "images": [],
+  "metrics": {},
+  "structured_data": {},
+  "canvas_count": 1,
+  "canvas_names": [
+    "SLERP vs Linear Interpolation"
+  ]
+}

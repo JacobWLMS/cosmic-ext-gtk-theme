@@ -1,0 +1,18 @@
+{
+  "step_name": "full_vs_name_swap",
+  "run_number": 1,
+  "status": "completed",
+  "started_at": "2026-03-26T01:20:41.564236Z",
+  "completed_at": "2026-03-26T01:22:33.767609Z",
+  "execution_time_s": 112.203,
+  "stdout": "All 4 images generated.\nDone.\n",
+  "stderr": "",
+  "error": null,
+  "images": [],
+  "metrics": {},
+  "structured_data": {},
+  "canvas_count": 1,
+  "canvas_names": [
+    "Full Embedding Swap vs Name-Only"
+  ]
+}

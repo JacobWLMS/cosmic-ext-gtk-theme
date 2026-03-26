@@ -1,0 +1,18 @@
+{
+  "step_name": "default_identity_probe",
+  "run_number": 1,
+  "status": "completed",
+  "started_at": "2026-03-26T01:22:49.320790Z",
+  "completed_at": "2026-03-26T01:25:38.293226Z",
+  "execution_time_s": 168.972,
+  "stdout": "  zeroed_male: done\n  zeroed_female: done\n  zeroed_child: done\n  zeroed_painting: done\n  zeroed_anime: done\n  no_name_at_all: done\nDefault probing done.\n",
+  "stderr": "",
+  "error": null,
+  "images": [],
+  "metrics": {},
+  "structured_data": {},
+  "canvas_count": 1,
+  "canvas_names": [
+    "Default Identity Probing"
+  ]
+}

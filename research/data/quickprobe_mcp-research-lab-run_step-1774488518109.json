@@ -1,0 +1,18 @@
+{
+  "step_name": "concept_generalization",
+  "run_number": 1,
+  "status": "completed",
+  "started_at": "2026-03-26T01:25:55.022183Z",
+  "completed_at": "2026-03-26T01:28:35.399860Z",
+  "execution_time_s": 160.378,
+  "stdout": "Golden retriever tokens: [6, 7, 8] = ['\u0120golden', '\u0120retrie', 'ver']\nHusky tokens: [6, 7] = ['\u0120hus', 'ky']\nAll concept swaps done.\nConcept generalization done.\n",
+  "stderr": "",
+  "error": null,
+  "images": [],
+  "metrics": {},
+  "structured_data": {},
+  "canvas_count": 1,
+  "canvas_names": [
+    "Concept Generalization"
+  ]
+}
